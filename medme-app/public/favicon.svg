@@ -1,0 +1,11 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Medical Cross Background -->
+  <rect width="32" height="32" rx="6" fill="#0F766E"/>
+  
+  <!-- Stethoscope Icon -->
+  <path d="M8 12C8 10.8954 8.89543 10 10 10H12C13.1046 10 14 10.8954 14 12V16C14 17.1046 13.1046 18 12 18H10C8.89543 18 8 17.1046 8 16V12Z" fill="white"/>
+  <path d="M10 18V20C10 21.1046 10.8954 22 12 22C13.1046 22 14 21.1046 14 20V18" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="20" cy="14" r="3" fill="white"/>
+  <path d="M17 14H14" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="20" cy="14" r="1.5" fill="#0F766E"/>
+</svg>

@@ -1,0 +1,12 @@
+// Environment variables for testing
+process.env.NODE_ENV = 'test'
+process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = 'pk_test_test'
+process.env.CLERK_SECRET_KEY = 'sk_test_test'
+process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL = '/sign-in'
+process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL = '/sign-up'
+process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL = '/dashboard'
+process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL = '/onboarding'
+process.env.MONGODB_URI = 'mongodb://localhost:27017/medme-test'
+process.env.VONAGE_API_KEY = 'test-api-key'
+process.env.VONAGE_API_SECRET = 'test-api-secret'
+process.env.VONAGE_APPLICATION_ID = 'test-application-id'
