@@ -110,31 +110,44 @@ export default function SubscriptionPage() {
   useEffect(() => {
     const loadSubscriptionData = async () => {
       setIsLoading(true);
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock transaction data
-      const mockTransactions: Transaction[] = [
-        {
-          id: '1',
-          type: 'usage',
-          description: 'Video consultation with Dr. Sarah Johnson',
-          credits: -2,
-          date: '2024-01-10',
-          status: 'completed'
-        },
-        {
-          id: '2',
-          type: 'purchase',
-          description: 'Welcome bonus credits',
-          credits: 2,
-          date: '2024-01-01',
-          status: 'completed'
+
+      try {
+        const response = await fetch('/api/patients/subscription');
+
+        if (response.ok) {
+          const data = await response.json();
+          setCurrentCredits(data.creditBalance);
+          setCurrentPlan(data.subscriptionPlan);
+          setTransactions(data.transactions);
+        } else {
+          // Fallback to demo data if API fails
+          const mockTransactions: Transaction[] = [
+            {
+              id: '1',
+              type: 'usage',
+              description: 'Video consultation with Dr. Sarah Johnson',
+              credits: -2,
+              date: '2024-01-10',
+              status: 'completed'
+            },
+            {
+              id: '2',
+              type: 'purchase',
+              description: 'Welcome bonus credits',
+              credits: 2,
+              date: '2024-01-01',
+              status: 'completed'
+            }
+          ];
+
+          setTransactions(mockTransactions);
         }
-      ];
-      
-      setTransactions(mockTransactions);
-      setIsLoading(false);
+      } catch (error) {
+        console.error('Error loading subscription data:', error);
+        setTransactions([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     if (isLoaded && user) {
@@ -147,7 +160,77 @@ export default function SubscriptionPage() {
       case 'purchase': return <Plus className="h-4 w-4 text-green-600" />;
       case 'usage': return <CreditCard className="h-4 w-4 text-blue-600" />;
       case 'refund': return <Gift className="h-4 w-4 text-purple-600" />;
+      case 'bonus': return <Gift className="h-4 w-4 text-purple-600" />;
       default: return <History className="h-4 w-4 text-gray-600" />;
+    }
+  };
+
+  const handlePurchaseCredits = async (credits: number) => {
+    try {
+      const response = await fetch('/api/patients/subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'purchase_credits',
+          credits,
+          paymentMethod: 'demo' // In real implementation, this would be from Stripe
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setCurrentCredits(data.newBalance);
+        // Refresh transaction history
+        const subscriptionResponse = await fetch('/api/patients/subscription');
+        if (subscriptionResponse.ok) {
+          const subscriptionData = await subscriptionResponse.json();
+          setTransactions(subscriptionData.transactions);
+        }
+        alert(`Successfully purchased ${credits} credits!`);
+      } else {
+        throw new Error(data.error || 'Failed to purchase credits');
+      }
+    } catch (error) {
+      console.error('Error purchasing credits:', error);
+      alert('Failed to purchase credits. Please try again.');
+    }
+  };
+
+  const handleUpgradePlan = async (planId: string) => {
+    try {
+      const response = await fetch('/api/patients/subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'upgrade_plan',
+          planId,
+          paymentMethod: 'demo' // In real implementation, this would be from Stripe
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setCurrentPlan(data.newPlan);
+        setCurrentCredits(data.newBalance);
+        // Refresh transaction history
+        const subscriptionResponse = await fetch('/api/patients/subscription');
+        if (subscriptionResponse.ok) {
+          const subscriptionData = await subscriptionResponse.json();
+          setTransactions(subscriptionData.transactions);
+        }
+        alert(`Successfully upgraded to ${planId} plan!`);
+      } else {
+        throw new Error(data.error || 'Failed to upgrade plan');
+      }
+    } catch (error) {
+      console.error('Error upgrading plan:', error);
+      alert('Failed to upgrade plan. Please try again.');
     }
   };
 
@@ -201,6 +284,41 @@ export default function SubscriptionPage() {
               <Badge variant={currentCredits >= 2 ? 'default' : 'destructive'}>
                 {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} Plan
               </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Quick Credit Purchase */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.15 }}
+      >
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Zap className="h-5 w-5" />
+              <span>Quick Credit Purchase</span>
+            </CardTitle>
+            <CardDescription>
+              Need more credits? Purchase them instantly
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[5, 10, 20, 50].map((credits) => (
+                <Button
+                  key={credits}
+                  variant="outline"
+                  className="h-auto p-4 flex flex-col items-center space-y-2"
+                  onClick={() => handlePurchaseCredits(credits)}
+                >
+                  <div className="text-2xl font-bold text-primary">{credits}</div>
+                  <div className="text-xs text-muted-foreground">credits</div>
+                  <div className="text-sm font-medium">${(credits * 2.5).toFixed(0)}</div>
+                </Button>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -265,12 +383,13 @@ export default function SubscriptionPage() {
                     ))}
                   </ul>
                   
-                  <Button 
-                    className="w-full" 
+                  <Button
+                    className="w-full"
                     variant={plan.current ? 'outline' : 'default'}
                     disabled={plan.current}
+                    onClick={() => plan.id !== 'free' && !plan.current && handleUpgradePlan(plan.id)}
                   >
-                    {plan.current ? 'Current Plan' : 'Upgrade'}
+                    {plan.current ? 'Current Plan' : plan.id === 'free' ? 'Free Plan' : 'Upgrade'}
                   </Button>
                 </CardContent>
               </Card>

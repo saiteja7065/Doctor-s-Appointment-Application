@@ -45,8 +45,33 @@ export default function DoctorDashboardPage() {
   useEffect(() => {
     const fetchDoctorStats = async () => {
       try {
-        // For now, we'll use mock data since the doctor might be pending verification
-        // In a real implementation, this would fetch from the API
+        const response = await fetch('/api/doctors/stats');
+        if (response.ok) {
+          const data = await response.json();
+          setStats({
+            totalAppointments: data.stats.totalAppointments,
+            todayAppointments: data.stats.todayAppointments,
+            totalPatients: data.stats.totalPatients,
+            totalEarnings: data.stats.totalEarnings,
+            averageRating: data.stats.averageRating,
+            totalRatings: data.stats.totalRatings,
+            verificationStatus: data.stats.verificationStatus
+          });
+        } else {
+          // Fallback to default stats if API fails
+          setStats({
+            totalAppointments: 0,
+            todayAppointments: 0,
+            totalPatients: 0,
+            totalEarnings: 0,
+            averageRating: 0,
+            totalRatings: 0,
+            verificationStatus: 'pending'
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching doctor stats:', error);
+        // Fallback to default stats on error
         setStats({
           totalAppointments: 0,
           todayAppointments: 0,
@@ -56,8 +81,6 @@ export default function DoctorDashboardPage() {
           totalRatings: 0,
           verificationStatus: 'pending'
         });
-      } catch (error) {
-        console.error('Error fetching doctor stats:', error);
       } finally {
         setIsLoading(false);
       }

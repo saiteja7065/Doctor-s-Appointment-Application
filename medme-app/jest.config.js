@@ -27,8 +27,14 @@ const customJestConfig = {
     '<rootDir>/dist/'
   ],
   transformIgnorePatterns: [
-    'node_modules/(?!(bson|mongodb|mongoose)/)'
+    'node_modules/(?!(bson|mongodb|mongoose|@mongodb-js)/)'
   ],
+  extensionsToTreatAsEsm: ['.ts', '.tsx'],
+  globals: {
+    'ts-jest': {
+      useESM: true
+    }
+  },
   collectCoverageFrom: [
     'src/**/*.{js,jsx,ts,tsx}',
     '!src/**/*.d.ts',

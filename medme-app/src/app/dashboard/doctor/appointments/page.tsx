@@ -147,7 +147,16 @@ export default function DoctorAppointmentsPage() {
 
   const fetchAppointments = async () => {
     try {
-      const response = await fetch('/api/doctors/appointments');
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+      if (dateFilter !== 'all') {
+        params.append('date', dateFilter);
+      }
+
+      const response = await fetch(`/api/doctors/appointments?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setAppointments(data.appointments || []);

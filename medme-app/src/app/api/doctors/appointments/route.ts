@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import mongoose from 'mongoose';
+import { withDoctorAuth, UserContext } from '@/lib/auth/rbac';
 import { Doctor } from '@/lib/models/Doctor';
+import Appointment, { AppointmentStatus } from '@/lib/models/Appointment';
 
 // Connect to MongoDB
 async function connectToDatabase() {
@@ -112,55 +112,14 @@ const DEMO_APPOINTMENTS = [
   }
 ];
 
-// GET - Fetch doctor's appointments
-export async function GET(request: NextRequest) {
+/**
+ * GET /api/doctors/appointments
+ * Get all appointments for the authenticated doctor
+ */
+async function handleGET(userContext: UserContext, request: NextRequest): Promise<NextResponse> {
   try {
-    // Verify authentication
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Get query parameters
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const date = searchParams.get('date');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
-
-    // Connect to database
-    const isConnected = await connectToDatabase();
-    if (!isConnected) {
-      // Return demo appointments data
-      console.log('Database not available, returning demo appointments data');
-      
-      let filteredAppointments = [...DEMO_APPOINTMENTS];
-      
-      // Apply filters
-      if (status && status !== 'all') {
-        filteredAppointments = filteredAppointments.filter(apt => apt.status === status);
-      }
-      
-      if (date) {
-        filteredAppointments = filteredAppointments.filter(apt => apt.appointmentDate === date);
-      }
-      
-      // Apply pagination
-      const paginatedAppointments = filteredAppointments.slice(offset, offset + limit);
-      
-      return NextResponse.json(
-        {
-          appointments: paginatedAppointments,
-          total: filteredAppointments.length,
-          hasMore: offset + limit < filteredAppointments.length,
-          message: 'Demo appointments data'
-        },
-        { status: 200 }
-      );
-    }
-
-    // Find doctor by clerkId
-    const doctor = await Doctor.findOne({ clerkId: userId });
+    // Get doctor profile
+    const doctor = await Doctor.findOne({ clerkId: userContext.clerkId });
     if (!doctor) {
       return NextResponse.json(
         { error: 'Doctor profile not found' },
@@ -168,34 +127,71 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // TODO: Implement actual appointment fetching from database
-    // For now, return demo data even when database is connected
-    let filteredAppointments = [...DEMO_APPOINTMENTS];
-    
-    // Apply filters
-    if (status && status !== 'all') {
-      filteredAppointments = filteredAppointments.filter(apt => apt.status === status);
+    // Parse query parameters
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const date = url.searchParams.get('date');
+    const limit = parseInt(url.searchParams.get('limit') || '50');
+    const offset = parseInt(url.searchParams.get('offset') || '0');
+
+    // Build query
+    const query: Record<string, unknown> = { doctorId: doctor._id };
+    if (status && Object.values(AppointmentStatus).includes(status as AppointmentStatus)) {
+      query.status = status;
     }
-    
     if (date) {
-      filteredAppointments = filteredAppointments.filter(apt => apt.appointmentDate === date);
+      query.appointmentDate = date;
     }
-    
-    // Apply pagination
-    const paginatedAppointments = filteredAppointments.slice(offset, offset + limit);
+
+    // Get appointments with pagination
+    const appointments = await Appointment.find(query)
+      .sort({ appointmentDate: -1, appointmentTime: -1 })
+      .limit(limit)
+      .skip(offset)
+      .lean();
+
+    // Get total count for pagination
+    const totalCount = await Appointment.countDocuments(query);
+
+    // Format appointments for frontend
+    const formattedAppointments = appointments.map(appointment => ({
+      id: appointment._id,
+      patientId: appointment.patientId,
+      patientName: appointment.patientName,
+      patientEmail: appointment.patientEmail,
+      appointmentDate: appointment.appointmentDate,
+      appointmentTime: appointment.appointmentTime,
+      duration: appointment.duration,
+      status: appointment.status,
+      topic: appointment.topic,
+      description: appointment.description,
+      consultationType: appointment.consultationType,
+      consultationFee: appointment.consultationFee,
+      paymentStatus: appointment.paymentStatus,
+      meetingLink: appointment.meetingLink,
+      notes: appointment.notes,
+      rating: appointment.rating,
+      review: appointment.review,
+      createdAt: appointment.createdAt,
+      updatedAt: appointment.updatedAt,
+    }));
 
     return NextResponse.json(
       {
-        appointments: paginatedAppointments,
-        total: filteredAppointments.length,
-        hasMore: offset + limit < filteredAppointments.length,
-        doctorId: doctor._id
+        appointments: formattedAppointments,
+        pagination: {
+          total: totalCount,
+          limit,
+          offset,
+          hasMore: offset + limit < totalCount,
+        },
+        doctorId: doctor._id,
       },
       { status: 200 }
     );
 
   } catch (error) {
-    console.error('Error fetching appointments:', error);
+    console.error('Error fetching doctor appointments:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -203,97 +199,52 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create a new appointment (for future use)
-export async function POST(request: NextRequest) {
+/**
+ * GET with demo fallback
+ */
+async function handleGETWithFallback(userContext: UserContext, request: NextRequest): Promise<NextResponse> {
   try {
-    // Verify authentication
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return await handleGET(userContext, request);
+  } catch (error) {
+    console.error('Database error, falling back to demo data:', error);
+
+    // Parse query parameters for demo filtering
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const date = url.searchParams.get('date');
+    const limit = parseInt(url.searchParams.get('limit') || '50');
+    const offset = parseInt(url.searchParams.get('offset') || '0');
+
+    let filteredAppointments = [...DEMO_APPOINTMENTS];
+
+    // Apply filters
+    if (status && status !== 'all') {
+      filteredAppointments = filteredAppointments.filter(apt => apt.status === status);
     }
 
-    // Parse request body
-    const body = await request.json();
-    const {
-      patientId,
-      appointmentDate,
-      appointmentTime,
-      duration,
-      topic,
-      description,
-      consultationType
-    } = body;
-
-    // Validate required fields
-    if (!patientId || !appointmentDate || !appointmentTime || !topic) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+    if (date) {
+      filteredAppointments = filteredAppointments.filter(apt => apt.appointmentDate === date);
     }
 
-    // Connect to database
-    const isConnected = await connectToDatabase();
-    if (!isConnected) {
-      // Return success response for demo mode
-      console.log('Database not available, returning success response for appointment creation');
-      return NextResponse.json(
-        {
-          message: 'Appointment created successfully (demo mode)',
-          appointment: {
-            id: 'demo_' + Date.now(),
-            patientId,
-            appointmentDate,
-            appointmentTime,
-            duration: duration || 30,
-            topic,
-            description,
-            consultationType: consultationType || 'video',
-            status: 'scheduled',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        },
-        { status: 201 }
-      );
-    }
-
-    // Find doctor by clerkId
-    const doctor = await Doctor.findOne({ clerkId: userId });
-    if (!doctor) {
-      return NextResponse.json(
-        { error: 'Doctor profile not found' },
-        { status: 404 }
-      );
-    }
-
-    // TODO: Implement actual appointment creation in database
-    // For now, return demo response
+    // Apply pagination
+    const paginatedAppointments = filteredAppointments.slice(offset, offset + limit);
+      
+    // Return demo appointments when database is not available
     return NextResponse.json(
       {
-        message: 'Appointment created successfully (demo mode)',
-        appointment: {
-          id: 'demo_' + Date.now(),
-          patientId,
-          appointmentDate,
-          appointmentTime,
-          duration: duration || 30,
-          topic,
-          description,
-          consultationType: consultationType || 'video',
-          status: 'scheduled',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
+        appointments: paginatedAppointments,
+        pagination: {
+          total: filteredAppointments.length,
+          limit,
+          offset,
+          hasMore: offset + limit < filteredAppointments.length,
+        },
+        message: 'Demo mode - database not available'
       },
-      { status: 201 }
-    );
-
-  } catch (error) {
-    console.error('Error creating appointment:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { status: 200 }
     );
   }
 }
+
+// Export with RBAC protection
+export const GET = withDoctorAuth(handleGETWithFallback);

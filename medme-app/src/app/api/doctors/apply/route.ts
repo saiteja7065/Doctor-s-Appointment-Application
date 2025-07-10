@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import mongoose from 'mongoose';
+import { connectToDatabase } from '@/lib/mongodb';
 import { User } from '@/lib/models/User';
 import { Doctor } from '@/lib/models/Doctor';
 import { DoctorVerificationStatus } from '@/lib/types/user';
@@ -38,7 +38,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       clerkId,
-      email,
       firstName,
       lastName,
       specialty,
@@ -84,25 +83,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    let user = await User.findOne({ clerkId });
+    const user = await User.findOne({ clerkId });
     if (!user) {
-      // Create new user if doesn't exist
-      user = new User({
-        clerkId,
-        email,
-        firstName,
-        lastName,
-        role: 'doctor',
-        status: 'pending', // Pending until doctor application is approved
-      });
+      return NextResponse.json(
+        {
+          error: 'User not found',
+          message: 'Please complete the onboarding process first by selecting your role as Doctor.'
+        },
+        { status: 404 }
+      );
+    }
+
+    // Verify user has doctor role - roles are immutable after creation
+    if (user.role !== 'doctor') {
+      return NextResponse.json(
+        {
+          error: 'Invalid role',
+          message: 'Only users with Doctor role can apply. Roles cannot be changed after account creation. Please create a separate account with Doctor role.'
+        },
+        { status: 403 }
+      );
+    }
+
+    // Update user status to pending verification
+    if (user.status !== 'pending_verification') {
+      user.status = 'pending_verification';
       await user.save();
-    } else {
-      // Update user role to doctor if not already
-      if (user.role !== 'doctor') {
-        user.role = 'doctor';
-        user.status = 'pending';
-        await user.save();
-      }
     }
 
     // Check if doctor application already exists

@@ -32,12 +32,13 @@ export enum MedicalSpecialty {
   FAMILY_MEDICINE = 'family_medicine',
 }
 
-// Doctor availability time slot
+// Doctor availability time slot (stored in UTC)
 export interface ITimeSlot {
-  dayOfWeek: number; // 0-6 (Sunday-Saturday)
-  startTime: string; // HH:MM format
-  endTime: string; // HH:MM format
+  dayOfWeek: number; // 0-6 (Sunday-Saturday) in UTC
+  startTime: string; // HH:MM format in UTC
+  endTime: string; // HH:MM format in UTC
   isAvailable: boolean;
+  originalTimezone?: string; // Doctor's timezone when setting availability
 }
 
 // Doctor interface
@@ -169,14 +170,20 @@ const DoctorSchema = new Schema<IDoctor>(
       startTime: {
         type: String,
         required: true,
+        // Stored in UTC HH:MM format
       },
       endTime: {
         type: String,
         required: true,
+        // Stored in UTC HH:MM format
       },
       isAvailable: {
         type: Boolean,
         default: true,
+      },
+      originalTimezone: {
+        type: String,
+        // Doctor's timezone when setting availability
       },
     }],
     consultationFee: {

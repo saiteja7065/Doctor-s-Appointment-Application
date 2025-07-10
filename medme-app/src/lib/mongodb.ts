@@ -42,6 +42,21 @@ if (uri) {
 export default clientPromise;
 
 // Database helper functions
+export async function connectToDatabase(): Promise<boolean> {
+  if (!clientPromise) {
+    console.warn('MongoDB is not configured. Database operations will be skipped.');
+    return false;
+  }
+
+  try {
+    await clientPromise;
+    return true;
+  } catch (error) {
+    console.error('Failed to connect to database:', error);
+    return false;
+  }
+}
+
 export async function getDatabase(): Promise<Db | null> {
   if (!clientPromise) {
     console.warn('MongoDB is not configured. Database operations will be skipped.');

@@ -17,6 +17,7 @@ import {
   MoreVertical
 } from 'lucide-react';
 import Link from 'next/link';
+import { TimezoneDisplay } from '@/components/ui/timezone-display';
 
 interface Appointment {
   id: string;
@@ -27,6 +28,8 @@ interface Appointment {
   status: 'upcoming' | 'completed' | 'cancelled';
   type: 'video' | 'in-person';
   description: string;
+  sessionId?: string;
+  meetingLink?: string;
 }
 
 export default function AppointmentsPage() {
@@ -36,44 +39,81 @@ export default function AppointmentsPage() {
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all');
 
   useEffect(() => {
-    // Simulate loading appointments
     const loadAppointments = async () => {
       setIsLoading(true);
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock data for demonstration
-      const mockAppointments: Appointment[] = [
-        {
-          id: '1',
-          doctorName: 'Dr. Sarah Johnson',
-          specialty: 'General Practice',
-          date: '2024-01-15',
-          time: '10:00 AM',
-          status: 'upcoming',
-          type: 'video',
-          description: 'Regular checkup and consultation'
-        },
-        {
-          id: '2',
-          doctorName: 'Dr. Michael Chen',
-          specialty: 'Cardiology',
-          date: '2024-01-10',
-          time: '2:30 PM',
-          status: 'completed',
-          type: 'video',
-          description: 'Heart health consultation'
+
+      try {
+        const response = await fetch('/api/patients/appointments');
+
+        if (response.ok) {
+          const data = await response.json();
+
+          // Transform API response to match component interface
+          const transformedAppointments: Appointment[] = data.appointments.map((apt: any) => ({
+            id: apt.id,
+            doctorName: apt.doctorName,
+            specialty: apt.doctorSpecialty,
+            date: apt.appointmentDate,
+            time: formatTime(apt.appointmentTime),
+            status: apt.status === 'scheduled' ? 'upcoming' : apt.status,
+            type: apt.consultationType,
+            description: apt.topic + (apt.description ? ` - ${apt.description}` : ''),
+            sessionId: apt.sessionId,
+            meetingLink: apt.meetingLink
+          }));
+
+          setAppointments(transformedAppointments);
+        } else {
+          // Fallback to demo data if API fails
+          const mockAppointments: Appointment[] = [
+            {
+              id: '1',
+              doctorName: 'Dr. Sarah Johnson',
+              specialty: 'General Practice',
+              date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              time: '10:00 AM',
+              status: 'upcoming',
+              type: 'video',
+              description: 'Regular checkup and consultation',
+              sessionId: 'demo_session_1',
+              meetingLink: '/consultation/demo_session_1'
+            },
+            {
+              id: '2',
+              doctorName: 'Dr. Michael Chen',
+              specialty: 'Cardiology',
+              date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              time: '2:30 PM',
+              status: 'completed',
+              type: 'video',
+              description: 'Heart health consultation',
+              sessionId: 'demo_session_2',
+              meetingLink: '/consultation/demo_session_2'
+            }
+          ];
+
+          setAppointments(mockAppointments);
         }
-      ];
-      
-      setAppointments(mockAppointments);
-      setIsLoading(false);
+      } catch (error) {
+        console.error('Error loading appointments:', error);
+        setAppointments([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     if (isLoaded && user) {
       loadAppointments();
     }
   }, [isLoaded, user]);
+
+  const formatTime = (time24: string) => {
+    const [hours, minutes] = time24.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
 
   const filteredAppointments = appointments.filter(appointment => 
     filter === 'all' || appointment.status === filter
@@ -85,6 +125,26 @@ export default function AppointmentsPage() {
       case 'completed': return 'bg-green-100 text-green-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const canJoinCall = (appointment: Appointment) => {
+    if (appointment.status !== 'upcoming' || appointment.type !== 'video') {
+      return false;
+    }
+
+    // Check if appointment is today and within 15 minutes of start time
+    const appointmentDate = new Date(appointment.date);
+    const today = new Date();
+
+    // For demo purposes, allow joining if it's today or tomorrow
+    const daysDiff = Math.floor((appointmentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return daysDiff >= 0 && daysDiff <= 1;
+  };
+
+  const handleJoinCall = (appointment: Appointment) => {
+    if (appointment.meetingLink) {
+      window.open(appointment.meetingLink, '_blank');
     }
   };
 
@@ -218,7 +278,12 @@ export default function AppointmentsPage() {
                         </div>
                         <div className="flex items-center space-x-1">
                           <Clock className="h-4 w-4" />
-                          <span>{appointment.time}</span>
+                          <TimezoneDisplay
+                            time={appointment.time.includes(':') ? appointment.time.split(' ')[0] : appointment.time}
+                            date={appointment.date}
+                            showTimezone={true}
+                            className="text-sm text-muted-foreground"
+                          />
                         </div>
                         <div className="flex items-center space-x-1">
                           <Video className="h-4 w-4" />
@@ -230,11 +295,24 @@ export default function AppointmentsPage() {
                         {appointment.description}
                       </p>
                       
-                      <Badge className={getStatusColor(appointment.status)}>
-                        {appointment.status}
-                      </Badge>
+                      <div className="flex items-center space-x-2">
+                        <Badge className={getStatusColor(appointment.status)}>
+                          {appointment.status}
+                        </Badge>
+
+                        {canJoinCall(appointment) && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleJoinCall(appointment)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Video className="h-4 w-4 mr-2" />
+                            Join Call
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    
+
                     <Button variant="ghost" size="sm">
                       <MoreVertical className="h-4 w-4" />
                     </Button>

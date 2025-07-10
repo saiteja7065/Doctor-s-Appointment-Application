@@ -20,6 +20,34 @@ jest.mock('next/navigation', () => ({
   },
 }))
 
+// Mock Next.js server components
+global.Request = class MockRequest {
+  constructor(url, options = {}) {
+    this.url = url
+    this.method = options.method || 'GET'
+    this.headers = new Map(Object.entries(options.headers || {}))
+    this.body = options.body
+  }
+}
+
+global.Response = class MockResponse {
+  constructor(body, options = {}) {
+    this.body = body
+    this.status = options.status || 200
+    this.headers = new Map(Object.entries(options.headers || {}))
+  }
+
+  static json(data, options = {}) {
+    return new MockResponse(JSON.stringify(data), {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    })
+  }
+}
+
 // Mock Clerk authentication
 jest.mock('@clerk/nextjs', () => ({
   auth: jest.fn(() => Promise.resolve({ userId: 'test-user-id' })),
@@ -128,20 +156,22 @@ global.IntersectionObserver = jest.fn().mockImplementation(() => ({
   disconnect: jest.fn(),
 }))
 
-// Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: jest.fn().mockImplementation(query => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(), // deprecated
-    removeListener: jest.fn(), // deprecated
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-})
+// Mock window.matchMedia (only in jsdom environment)
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: jest.fn().mockImplementation(query => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: jest.fn(), // deprecated
+      removeListener: jest.fn(), // deprecated
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    })),
+  })
+}
 
 // Mock scrollTo
 Object.defineProperty(window, 'scrollTo', {

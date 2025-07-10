@@ -1,36 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import mongoose from 'mongoose';
+import { withPatientAuth, UserContext } from '@/lib/auth/rbac';
 import { Patient } from '@/lib/models/Patient';
 import { User } from '@/lib/models/User';
 
-// Connect to MongoDB
-async function connectToDatabase() {
-  if (mongoose.connections[0].readyState) {
-    return;
-  }
-  
+// PUT handler with RBAC protection
+async function handlePUT(userContext: UserContext, request: NextRequest): Promise<NextResponse> {
   try {
-    await mongoose.connect(process.env.MONGODB_URI!);
-    console.log('Connected to MongoDB');
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    throw error;
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    // Verify authentication
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Parse request body
     const body = await request.json();
     const {
-      clerkId,
       firstName,
       lastName,
       phoneNumber,
@@ -40,30 +18,19 @@ export async function PUT(request: NextRequest) {
       preferences,
     } = body;
 
-    // Validate that the user is updating their own profile
-    if (clerkId !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Connect to database
-    await connectToDatabase();
-
-    // Update user basic information
-    const user = await User.findOne({ clerkId });
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
+    // Update user basic information (user is already authenticated and verified as patient)
+    const user = userContext.user;
 
     // Update user fields
     if (firstName) user.firstName = firstName;
     if (lastName) user.lastName = lastName;
     if (phoneNumber) user.phoneNumber = phoneNumber;
     if (dateOfBirth) user.dateOfBirth = new Date(dateOfBirth);
-    
+
     await user.save();
 
     // Update patient-specific information
-    const patient = await Patient.findOne({ clerkId });
+    const patient = await Patient.findOne({ clerkId: userContext.clerkId });
     if (!patient) {
       return NextResponse.json({ error: 'Patient profile not found' }, { status: 404 });
     }
@@ -128,24 +95,13 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-export async function GET() {
+// GET handler with RBAC protection
+async function handleGET(userContext: UserContext, request: NextRequest): Promise<NextResponse> {
   try {
-    // Verify authentication
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Get user and patient data (user is already authenticated and verified as patient)
+    const user = userContext.user;
 
-    // Connect to database
-    await connectToDatabase();
-
-    // Get user and patient data
-    const user = await User.findOne({ clerkId: userId });
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const patient = await Patient.findOne({ clerkId: userId });
+    const patient = await Patient.findOne({ clerkId: userContext.clerkId });
     if (!patient) {
       return NextResponse.json({ error: 'Patient profile not found' }, { status: 404 });
     }
@@ -189,3 +145,7 @@ export async function GET() {
     );
   }
 }
+
+// Export handlers with RBAC protection
+export const GET = withPatientAuth(handleGET);
+export const PUT = withPatientAuth(handlePUT);

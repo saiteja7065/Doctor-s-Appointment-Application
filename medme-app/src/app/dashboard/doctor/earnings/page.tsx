@@ -157,9 +157,23 @@ export default function DoctorEarningsPage() {
     fetchEarningsData();
   }, []);
 
+  // Refetch data when time filter changes
+  useEffect(() => {
+    if (!isLoading) {
+      setIsLoading(true);
+      fetchEarningsData();
+    }
+  }, [timeFilter]);
+
   const fetchEarningsData = async () => {
     try {
-      const response = await fetch('/api/doctors/earnings');
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (timeFilter !== 'all') {
+        params.append('period', timeFilter);
+      }
+
+      const response = await fetch(`/api/doctors/earnings?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setEarningsData(data.earnings || DEMO_EARNINGS);
