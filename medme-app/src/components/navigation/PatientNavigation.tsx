@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+// Removed framer-motion for better performance - using CSS animations
 import { Button } from '@/components/ui/button';
 import { 
   Home, 
@@ -69,11 +69,10 @@ export default function PatientNavigation() {
         const isActive = pathname === item.href;
         
         return (
-          <motion.div
+          <div
             key={item.href}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.05 }}
+            className="animate-fade-in-up"
+            style={{ animationDelay: `${index * 0.05}s` }}
           >
             <Link href={item.href}>
               <Button
@@ -97,7 +96,7 @@ export default function PatientNavigation() {
                 </div>
               </Button>
             </Link>
-          </motion.div>
+          </div>
         );
       })}
     </nav>

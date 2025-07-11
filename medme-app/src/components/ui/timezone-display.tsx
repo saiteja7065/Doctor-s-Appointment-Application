@@ -42,12 +42,56 @@ export function TimezoneDisplay({
     // Format time based on timezone and format preference
     try {
       const targetTimezone = timezone || userTimezone;
-      const [hours, minutes] = time.split(':').map(Number);
-      
+
+      // Parse time - handle both 24-hour (HH:MM) and 12-hour (HH:MM AM/PM) formats
+      let hours: number, minutes: number;
+
+      if (time.includes('AM') || time.includes('PM')) {
+        // Handle 12-hour format (e.g., "10:00 AM", "2:30 PM")
+        const [timePart, ampm] = time.split(' ');
+        const [hourStr, minuteStr] = timePart.split(':');
+        let hour = parseInt(hourStr);
+        minutes = parseInt(minuteStr);
+
+        if (ampm === 'PM' && hour !== 12) {
+          hour += 12;
+        } else if (ampm === 'AM' && hour === 12) {
+          hour = 0;
+        }
+        hours = hour;
+      } else {
+        // Handle 24-hour format (e.g., "14:30", "09:00")
+        const timeParts = time.split(':');
+        if (timeParts.length !== 2) {
+          throw new Error(`Invalid time format: ${time}`);
+        }
+        hours = parseInt(timeParts[0]);
+        minutes = parseInt(timeParts[1]);
+      }
+
+      // Validate parsed time
+      if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        throw new Error(`Invalid time values: ${hours}:${minutes}`);
+      }
+
       // Create a date object for the time
-      const timeDate = date ? new Date(`${date}T${time}:00`) : new Date();
-      timeDate.setHours(hours, minutes, 0, 0);
-      
+      let timeDate: Date;
+      if (date) {
+        // Validate date format
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          throw new Error(`Invalid date format: ${date}`);
+        }
+        timeDate = new Date(`${date}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`);
+      } else {
+        timeDate = new Date();
+        timeDate.setHours(hours, minutes, 0, 0);
+      }
+
+      // Check if date is valid
+      if (isNaN(timeDate.getTime())) {
+        throw new Error(`Invalid date created from: ${date} ${hours}:${minutes}`);
+      }
+
       // Format time according to preferences
       const formatOptions: Intl.DateTimeFormatOptions = {
         hour: '2-digit',
@@ -55,23 +99,24 @@ export function TimezoneDisplay({
         hour12: format === '12h',
         timeZone: targetTimezone
       };
-      
+
       const formatted = new Intl.DateTimeFormat('en-US', formatOptions).format(timeDate);
       setFormattedTime(formatted);
-      
+
       // Get timezone abbreviation
       if (showTimezone) {
         const tzFormatter = new Intl.DateTimeFormat('en-US', {
           timeZone: targetTimezone,
           timeZoneName: 'short'
         });
-        
+
         const parts = tzFormatter.formatToParts(timeDate);
         const timeZonePart = parts.find(part => part.type === 'timeZoneName');
         setTimezoneAbbr(timeZonePart?.value || targetTimezone);
       }
     } catch (error) {
-      console.error('Error formatting time:', error);
+      console.error('Error formatting time:', error, { time, date, timezone, userTimezone });
+      // Fallback to original time if parsing fails
       setFormattedTime(time);
       setTimezoneAbbr(timezone || userTimezone);
     }
@@ -126,12 +171,56 @@ export function TimezoneConverter({
     // Convert time between timezones
     try {
       const targetTimezone = toTimezone || userTimezone;
-      const [hours, minutes] = time.split(':').map(Number);
-      
+
+      // Parse time - handle both 24-hour (HH:MM) and 12-hour (HH:MM AM/PM) formats
+      let hours: number, minutes: number;
+
+      if (time.includes('AM') || time.includes('PM')) {
+        // Handle 12-hour format (e.g., "10:00 AM", "2:30 PM")
+        const [timePart, ampm] = time.split(' ');
+        const [hourStr, minuteStr] = timePart.split(':');
+        let hour = parseInt(hourStr);
+        minutes = parseInt(minuteStr);
+
+        if (ampm === 'PM' && hour !== 12) {
+          hour += 12;
+        } else if (ampm === 'AM' && hour === 12) {
+          hour = 0;
+        }
+        hours = hour;
+      } else {
+        // Handle 24-hour format (e.g., "14:30", "09:00")
+        const timeParts = time.split(':');
+        if (timeParts.length !== 2) {
+          throw new Error(`Invalid time format: ${time}`);
+        }
+        hours = parseInt(timeParts[0]);
+        minutes = parseInt(timeParts[1]);
+      }
+
+      // Validate parsed time
+      if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        throw new Error(`Invalid time values: ${hours}:${minutes}`);
+      }
+
       // Create a date object in the source timezone
-      const sourceDate = date ? new Date(`${date}T${time}:00`) : new Date();
-      sourceDate.setHours(hours, minutes, 0, 0);
-      
+      let sourceDate: Date;
+      if (date) {
+        // Validate date format
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          throw new Error(`Invalid date format: ${date}`);
+        }
+        sourceDate = new Date(`${date}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`);
+      } else {
+        sourceDate = new Date();
+        sourceDate.setHours(hours, minutes, 0, 0);
+      }
+
+      // Check if date is valid
+      if (isNaN(sourceDate.getTime())) {
+        throw new Error(`Invalid date created from: ${date} ${hours}:${minutes}`);
+      }
+
       // Format original time
       const originalFormatted = new Intl.DateTimeFormat('en-US', {
         hour: '2-digit',
@@ -140,7 +229,7 @@ export function TimezoneConverter({
         timeZone: fromTimezone
       }).format(sourceDate);
       setOriginalTime(originalFormatted);
-      
+
       // Format converted time
       const convertedFormatted = new Intl.DateTimeFormat('en-US', {
         hour: '2-digit',
@@ -149,9 +238,9 @@ export function TimezoneConverter({
         timeZone: targetTimezone
       }).format(sourceDate);
       setConvertedTime(convertedFormatted);
-      
+
     } catch (error) {
-      console.error('Error converting time:', error);
+      console.error('Error converting time:', error, { time, date, fromTimezone, toTimezone });
       setOriginalTime(time);
       setConvertedTime(time);
     }
@@ -205,10 +294,55 @@ export function WorldClock({
   useEffect(() => {
     // Calculate time for each timezone
     try {
-      const [hours, minutes] = time.split(':').map(Number);
-      const baseDate = date ? new Date(`${date}T${time}:00`) : new Date();
-      baseDate.setHours(hours, minutes, 0, 0);
-      
+      // Parse time - handle both 24-hour (HH:MM) and 12-hour (HH:MM AM/PM) formats
+      let hours: number, minutes: number;
+
+      if (time.includes('AM') || time.includes('PM')) {
+        // Handle 12-hour format (e.g., "10:00 AM", "2:30 PM")
+        const [timePart, ampm] = time.split(' ');
+        const [hourStr, minuteStr] = timePart.split(':');
+        let hour = parseInt(hourStr);
+        minutes = parseInt(minuteStr);
+
+        if (ampm === 'PM' && hour !== 12) {
+          hour += 12;
+        } else if (ampm === 'AM' && hour === 12) {
+          hour = 0;
+        }
+        hours = hour;
+      } else {
+        // Handle 24-hour format (e.g., "14:30", "09:00")
+        const timeParts = time.split(':');
+        if (timeParts.length !== 2) {
+          throw new Error(`Invalid time format: ${time}`);
+        }
+        hours = parseInt(timeParts[0]);
+        minutes = parseInt(timeParts[1]);
+      }
+
+      // Validate parsed time
+      if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        throw new Error(`Invalid time values: ${hours}:${minutes}`);
+      }
+
+      // Create base date
+      let baseDate: Date;
+      if (date) {
+        // Validate date format
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          throw new Error(`Invalid date format: ${date}`);
+        }
+        baseDate = new Date(`${date}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`);
+      } else {
+        baseDate = new Date();
+        baseDate.setHours(hours, minutes, 0, 0);
+      }
+
+      // Check if date is valid
+      if (isNaN(baseDate.getTime())) {
+        throw new Error(`Invalid date created from: ${date} ${hours}:${minutes}`);
+      }
+
       const calculatedTimes = timezones.map(tz => {
         const formatted = new Intl.DateTimeFormat('en-US', {
           hour: '2-digit',
@@ -216,17 +350,17 @@ export function WorldClock({
           hour12: true,
           timeZone: tz
         }).format(baseDate);
-        
+
         return {
           timezone: tz,
           time: formatted,
           abbr: getTimezoneAbbr(tz)
         };
       });
-      
+
       setTimes(calculatedTimes);
     } catch (error) {
-      console.error('Error calculating world times:', error);
+      console.error('Error calculating world times:', error, { time, date, timezones });
       setTimes([]);
     }
   }, [time, date, timezones]);

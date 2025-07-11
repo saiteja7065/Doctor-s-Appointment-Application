@@ -3,7 +3,7 @@
 import { useUser } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import DoctorNavigation from '@/components/navigation/DoctorNavigation';
+import LazyDoctorNavigation from '@/components/navigation/LazyDoctorNavigation';
 
 export default function DoctorDashboardLayout({
   children,
@@ -56,7 +56,7 @@ export default function DoctorDashboardLayout({
 
   return (
     <div className="min-h-screen medical-gradient">
-      <DoctorNavigation />
+      <LazyDoctorNavigation />
       <main className="lg:pl-64">
         {children}
       </main>

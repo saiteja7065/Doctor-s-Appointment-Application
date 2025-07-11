@@ -5,11 +5,12 @@ import { useUser } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  Calendar, 
-  CreditCard, 
-  User, 
-  Heart, 
+import { CreditBalance } from '@/components/ui/credit-balance';
+import {
+  Calendar,
+  CreditCard,
+  User,
+  Heart,
   Clock,
   Stethoscope,
   ArrowRight,
@@ -126,20 +127,11 @@ export default function PatientDashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          <Card className="glass-card">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Available Credits
-              </CardTitle>
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">{stats.creditBalance}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.creditBalance >= 2 ? 'Ready to book!' : 'Need more credits'}
-              </p>
-            </CardContent>
-          </Card>
+          <CreditBalance
+            showDetails={false}
+            showPurchaseButton={false}
+            className="h-full"
+          />
         </motion.div>
 
         <motion.div
@@ -205,6 +197,56 @@ export default function PatientDashboardPage() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Credit Management Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+      >
+        <div className="lg:col-span-1">
+          <CreditBalance showDetails={true} showPurchaseButton={true} />
+        </div>
+        <div className="lg:col-span-2">
+          <Card className="glass-card h-full">
+            <CardHeader>
+              <CardTitle>Credit Usage Tips</CardTitle>
+              <CardDescription>
+                Make the most of your consultation credits
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-primary/10 rounded-lg">
+                  <h4 className="font-medium text-primary mb-2">💡 Smart Booking</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Each consultation costs 2 credits. Plan your appointments to make the most of your credits.
+                  </p>
+                </div>
+                <div className="p-4 bg-secondary/10 rounded-lg">
+                  <h4 className="font-medium text-secondary-foreground mb-2">🎁 Free Credits</h4>
+                  <p className="text-sm text-muted-foreground">
+                    New patients receive 2 free credits to get started with their first consultation.
+                  </p>
+                </div>
+                <div className="p-4 bg-accent/10 rounded-lg">
+                  <h4 className="font-medium text-accent-foreground mb-2">📅 No Expiry</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Your credits never expire. Use them whenever you need medical consultation.
+                  </p>
+                </div>
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium mb-2">💳 Easy Top-up</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Purchase additional credits anytime through our secure payment system.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </motion.div>
 
       {/* Quick Actions */}
       <motion.div

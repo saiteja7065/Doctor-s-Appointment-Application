@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { motion, AnimatePresence } from 'framer-motion';
+// Removed framer-motion for better performance - using CSS animations
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -228,11 +228,7 @@ export default function FindDoctorsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <div className="animate-fade-in-up">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Find Doctors</h1>
@@ -259,14 +255,10 @@ export default function FindDoctorsPage() {
             </Button>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Search Bar */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
+      <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
         <Card className="glass-card">
           <CardContent className="p-4">
             <div className="relative">
@@ -280,17 +272,11 @@ export default function FindDoctorsPage() {
             </div>
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
 
       {/* Advanced Filters */}
-      <AnimatePresence>
-        {showFilters && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-          >
+      {showFilters && (
+        <div className="animate-fade-in" style={{ animationDuration: '0.3s' }}>
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="text-lg">Advanced Filters</CardTitle>
@@ -430,16 +416,11 @@ export default function FindDoctorsPage() {
                 )}
               </CardContent>
             </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
 
       {/* Results Summary */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
+      <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             {loading ? (
@@ -454,14 +435,10 @@ export default function FindDoctorsPage() {
             </p>
           )}
         </div>
-      </motion.div>
+      </div>
 
       {/* Doctors Grid/List */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
+      <div className="animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
         {loading ? (
           <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -492,11 +469,10 @@ export default function FindDoctorsPage() {
         ) : (
           <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
             {doctors.map((doctor, index) => (
-              <motion.div
+              <div
                 key={doctor.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <Card className="glass-card hover:shadow-lg transition-all duration-300 group">
                   <CardContent className="p-6">
@@ -604,19 +580,15 @@ export default function FindDoctorsPage() {
                     </div>
                   </CardContent>
                 </Card>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
+        <div className="animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
           <Card className="glass-card">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -653,7 +625,7 @@ export default function FindDoctorsPage() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       )}
     </div>
   );

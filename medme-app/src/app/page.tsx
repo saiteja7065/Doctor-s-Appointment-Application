@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+// Removed framer-motion for better performance - using CSS animations instead
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Stethoscope, Shield, Clock, Users, ArrowRight } from 'lucide-react';
@@ -52,11 +52,7 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
+        <div className="animate-fade-in-up">
           <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6">
             Your Health,
             <span className="text-primary"> Simplified</span>
@@ -78,34 +74,28 @@ export default function Home() {
               </Button>
             </Link>
           </div>
-        </motion.div>
+        </div>
       </section>
 
       {/* Features Section */}
       <section className="container mx-auto px-4 py-20">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-center mb-16"
-        >
+        <div className="text-center mb-16 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           <h2 className="text-4xl font-bold text-foreground mb-4">
             Why Choose MedMe?
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Experience healthcare that adapts to your lifestyle with our innovative platform
           </p>
-        </motion.div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature, index) => {
             const Icon = feature.icon;
             return (
-              <motion.div
+              <div
                 key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 * index }}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${0.1 * index}s` }}
               >
                 <Card className="glass-card h-full hover:shadow-lg transition-all duration-300">
                   <CardHeader className="text-center">
@@ -120,7 +110,7 @@ export default function Home() {
                     </CardDescription>
                   </CardContent>
                 </Card>
-              </motion.div>
+              </div>
             );
           })}
         </div>

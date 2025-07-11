@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { motion } from 'framer-motion';
+// Removed framer-motion for better performance - using CSS animations
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -279,7 +279,7 @@ export default function AppointmentsPage() {
                         <div className="flex items-center space-x-1">
                           <Clock className="h-4 w-4" />
                           <TimezoneDisplay
-                            time={appointment.time.includes(':') ? appointment.time.split(' ')[0] : appointment.time}
+                            time={appointment.time}
                             date={appointment.date}
                             showTimezone={true}
                             className="text-sm text-muted-foreground"

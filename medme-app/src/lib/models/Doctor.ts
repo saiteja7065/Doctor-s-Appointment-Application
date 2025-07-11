@@ -92,13 +92,11 @@ const DoctorSchema = new Schema<IDoctor>(
       ref: 'User',
       required: true,
       unique: true,
-      index: true,
     },
     clerkId: {
       type: String,
       required: true,
       unique: true,
-      index: true,
     },
     verificationStatus: {
       type: String,
@@ -268,8 +266,7 @@ const DoctorSchema = new Schema<IDoctor>(
   }
 );
 
-// Indexes for better query performance
-DoctorSchema.index({ clerkId: 1 });
+// Indexes for better query performance (clerkId and userId already have unique indexes)
 DoctorSchema.index({ verificationStatus: 1 });
 DoctorSchema.index({ specialty: 1 });
 DoctorSchema.index({ isOnline: 1 });

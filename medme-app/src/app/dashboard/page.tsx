@@ -3,7 +3,7 @@
 import { useUser, UserButton } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+// Removed framer-motion for better performance - using CSS animations
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Stethoscope, User, Calendar, CreditCard } from 'lucide-react';
@@ -29,6 +29,12 @@ export default function DashboardPage() {
           } else if (data.role === 'admin') {
             router.push('/dashboard/admin');
           }
+        } else if (response.status === 404) {
+          // User not found in database - redirect to onboarding
+          console.log('User not found in database, redirecting to onboarding');
+          router.push('/onboarding');
+        } else {
+          console.error('Failed to fetch user role:', response.status);
         }
       } catch (error) {
         console.error('Error fetching user role:', error);

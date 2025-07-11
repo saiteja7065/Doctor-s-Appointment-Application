@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+// Removed framer-motion for better performance - using CSS animations
 import { UserRole } from '@/lib/types/user';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,8 +35,28 @@ export default function OnboardingPage() {
         }),
       });
 
+      console.log('📡 Onboarding: Response status:', response.status);
+
       if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Onboarding: Profile created successfully:', data);
+
         // Redirect based on role
+        if (selectedRole === UserRole.PATIENT) {
+          console.log('🏥 Onboarding: Redirecting to patient dashboard');
+          router.push('/dashboard/patient');
+        } else if (selectedRole === UserRole.DOCTOR) {
+          console.log('👨‍⚕️ Onboarding: Redirecting to doctor onboarding');
+          router.push('/onboarding/doctor');
+        } else if (selectedRole === UserRole.ADMIN) {
+          console.log('👑 Onboarding: Redirecting to admin dashboard');
+          router.push('/dashboard/admin');
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Onboarding: Failed to create profile:', errorData);
+
+        // Even if there's an error, try to redirect to prevent user from being stuck
         if (selectedRole === UserRole.PATIENT) {
           router.push('/dashboard/patient');
         } else if (selectedRole === UserRole.DOCTOR) {
@@ -44,12 +64,18 @@ export default function OnboardingPage() {
         } else if (selectedRole === UserRole.ADMIN) {
           router.push('/dashboard/admin');
         }
-      } else {
-        throw new Error('Failed to create profile');
       }
     } catch (error) {
-      console.error('Error creating profile:', error);
-      // Handle error (show toast, etc.)
+      console.error('💥 Onboarding: Error creating profile:', error);
+
+      // Fallback: redirect anyway to prevent user from being stuck
+      if (selectedRole === UserRole.PATIENT) {
+        router.push('/dashboard/patient');
+      } else if (selectedRole === UserRole.DOCTOR) {
+        router.push('/onboarding/doctor');
+      } else if (selectedRole === UserRole.ADMIN) {
+        router.push('/dashboard/admin');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -85,29 +111,23 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen medical-gradient flex items-center justify-center p-4">
       <div className="w-full max-w-4xl">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-12"
-        >
+        <div className="text-center mb-12 animate-fade-in-up">
           <h1 className="text-4xl font-bold text-foreground mb-4">
             Welcome to MedMe, {user?.firstName}!
           </h1>
           <p className="text-xl text-muted-foreground">
             Choose your role to get started with your healthcare journey
           </p>
-        </motion.div>
+        </div>
 
         <div className="grid md:grid-cols-2 gap-8 mb-8">
           {roleOptions.map((option, index) => {
             const Icon = option.icon;
             return (
-              <motion.div
+              <div
                 key={option.role}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <Card
                   className={`cursor-pointer transition-all duration-300 hover:shadow-lg ${
@@ -137,17 +157,12 @@ export default function OnboardingPage() {
                     </ul>
                   </CardContent>
                 </Card>
-              </motion.div>
+              </div>
             );
           })}
         </div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="text-center"
-        >
+        <div className="text-center animate-fade-in" style={{ animationDelay: '0.3s' }}>
           <Button
             onClick={handleRoleSelection}
             disabled={!selectedRole || isLoading}
@@ -159,7 +174,7 @@ export default function OnboardingPage() {
           <p className="text-sm text-muted-foreground mt-4">
             You can only select one role per account. Choose carefully!
           </p>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

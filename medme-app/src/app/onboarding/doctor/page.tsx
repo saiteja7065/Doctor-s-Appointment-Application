@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+// Removed framer-motion for better performance - using CSS animations
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -216,12 +216,7 @@ export default function DoctorOnboardingPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="max-w-4xl mx-auto"
-        >
+        <div className="max-w-4xl mx-auto animate-fade-in-up">
           {/* Progress Indicator */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
@@ -286,11 +281,7 @@ export default function DoctorOnboardingPage() {
             <CardContent className="space-y-6">
               {/* Step 1: Basic Information */}
               {currentStep === 1 && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="space-y-6"
-                >
+                <div className="space-y-6 animate-fade-in-up">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="specialty">Medical Specialty *</Label>
@@ -380,16 +371,12 @@ export default function DoctorOnboardingPage() {
                       />
                     </div>
                   </div>
-                </motion.div>
+                </div>
               )}
 
               {/* Step 2: Education & Experience */}
               {currentStep === 2 && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="space-y-6"
-                >
+                <div className="space-y-6 animate-fade-in-up">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <Label className="text-lg font-medium">Education</Label>
@@ -507,16 +494,12 @@ export default function DoctorOnboardingPage() {
                       </Card>
                     ))}
                   </div>
-                </motion.div>
+                </div>
               )}
 
               {/* Step 3: Credentials & Verification */}
               {currentStep === 3 && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="space-y-6"
-                >
+                <div className="space-y-6 animate-fade-in-up">
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="credentialUrl">Credential Verification URL *</Label>
@@ -620,16 +603,12 @@ export default function DoctorOnboardingPage() {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               )}
 
               {/* Step 4: Application Submitted */}
               {currentStep === 4 && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="text-center space-y-6 py-8"
-                >
+                <div className="text-center space-y-6 py-8 animate-fade-in-scale">
                   <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
                     <CheckCircle className="w-10 h-10 text-green-600" />
                   </div>
@@ -695,7 +674,7 @@ export default function DoctorOnboardingPage() {
                       You'll receive an email notification once your application is reviewed.
                     </p>
                   </div>
-                </motion.div>
+                </div>
               )}
 
               {/* Navigation Buttons */}
@@ -723,7 +702,7 @@ export default function DoctorOnboardingPage() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       </main>
     </div>
   );

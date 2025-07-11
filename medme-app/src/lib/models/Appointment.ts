@@ -64,13 +64,11 @@ const AppointmentSchema = new Schema<IAppointment>(
       type: Schema.Types.ObjectId,
       ref: 'Patient',
       required: true,
-      index: true,
     },
     doctorId: {
       type: Schema.Types.ObjectId,
       ref: 'Doctor',
       required: true,
-      index: true,
     },
     patientName: {
       type: String,
@@ -92,7 +90,6 @@ const AppointmentSchema = new Schema<IAppointment>(
       type: String,
       required: true,
       match: /^\d{4}-\d{2}-\d{2}$/, // YYYY-MM-DD format
-      index: true,
     },
     appointmentTime: {
       type: String,
@@ -110,7 +107,6 @@ const AppointmentSchema = new Schema<IAppointment>(
       type: String,
       enum: Object.values(AppointmentStatus),
       default: AppointmentStatus.SCHEDULED,
-      index: true,
     },
     topic: {
       type: String,
@@ -137,7 +133,6 @@ const AppointmentSchema = new Schema<IAppointment>(
       type: String,
       enum: Object.values(PaymentStatus),
       default: PaymentStatus.PENDING,
-      index: true,
     },
     meetingLink: {
       type: String,

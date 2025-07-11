@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+// Removed framer-motion for better performance - using CSS animations
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Stethoscope, CheckCircle, AlertCircle } from 'lucide-react';
@@ -9,12 +9,7 @@ export default function TestPage() {
   return (
     <div className="min-h-screen medical-gradient p-6">
       <div className="max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-8"
-        >
+        <div className="text-center mb-8 animate-fade-in-up">
           <div className="flex items-center justify-center space-x-2 mb-4">
             <Stethoscope className="h-12 w-12 text-primary" />
             <h1 className="text-4xl font-bold text-foreground">MedMe Test Page</h1>
@@ -22,14 +17,10 @@ export default function TestPage() {
           <p className="text-xl text-muted-foreground">
             Application Status Check
           </p>
-        </motion.div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
+          <div className="animate-slide-in-left" style={{ animationDelay: '0.1s' }}>
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -67,13 +58,9 @@ export default function TestPage() {
                 </div>
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
+          <div className="animate-slide-in-right" style={{ animationDelay: '0.2s' }}>
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -107,15 +94,10 @@ export default function TestPage() {
                 </div>
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="mt-8"
-        >
+        <div className="mt-8 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
           <Card className="glass-card">
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
@@ -151,18 +133,13 @@ export default function TestPage() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="text-center mt-8"
-        >
+        <div className="text-center mt-8 animate-fade-in" style={{ animationDelay: '0.4s' }}>
           <p className="text-sm text-muted-foreground">
             MedMe Application • Built with Next.js, TypeScript, and MongoDB
           </p>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

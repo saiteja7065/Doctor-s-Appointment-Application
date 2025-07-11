@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withDoctorAuth, UserContext } from '@/lib/auth/rbac';
 import { Doctor } from '@/lib/models/Doctor';
 import Appointment, { AppointmentStatus, PaymentStatus } from '@/lib/models/Appointment';
+import { withCache, cacheKeys, cacheTTL } from '@/lib/cache';
 
 interface DoctorStats {
   totalAppointments: number;
@@ -37,23 +38,24 @@ interface DoctorStats {
  */
 async function handleGET(userContext: UserContext, _request: NextRequest): Promise<NextResponse> {
   try {
-    // Get doctor profile
-    const doctor = await Doctor.findOne({ clerkId: userContext.clerkId });
-    if (!doctor) {
-      return NextResponse.json(
-        { error: 'Doctor profile not found' },
-        { status: 404 }
-      );
-    }
+    // Use caching for doctor stats
+    const cacheKey = cacheKeys.doctorStats(userContext.clerkId);
 
-    // Get current date info
-    const today = new Date().toISOString().split('T')[0];
-    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-    const startOfMonth = `${currentMonth}-01`;
-    const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
-      .toISOString().split('T')[0];
+    const stats = await withCache(cacheKey, async () => {
+      // Get doctor profile with lean query for better performance
+      const doctor = await Doctor.findOne({ clerkId: userContext.clerkId }).lean();
+      if (!doctor) {
+        throw new Error('Doctor profile not found');
+      }
 
-    // Parallel queries for better performance
+      // Get current date info
+      const today = new Date().toISOString().split('T')[0];
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+      const startOfMonth = `${currentMonth}-01`;
+      const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+        .toISOString().split('T')[0];
+
+      // Parallel queries for better performance
     const [
       totalAppointments,
       todayAppointments,
@@ -193,6 +195,9 @@ async function handleGET(userContext: UserContext, _request: NextRequest): Promi
       })),
       monthlyStats
     };
+
+      return stats;
+    }, cacheTTL.medium);
 
     return NextResponse.json({ stats }, { status: 200 });
 

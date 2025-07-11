@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser, UserButton } from '@clerk/nextjs';
-import { motion } from 'framer-motion';
+// Removed framer-motion for better performance - using CSS animations
 import { Card } from '@/components/ui/card';
 import { Stethoscope, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -72,19 +72,14 @@ export default function PatientLayout({
           <div className="h-full pt-16 lg:pt-0">
             <Card className="h-full glass-card rounded-none lg:rounded-r-lg border-l-0 lg:border-l">
               <div className="p-6">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="mb-6"
-                >
+                <div className="mb-6 animate-fade-in-up">
                   <h2 className="text-xl font-semibold text-foreground mb-2">
                     Patient Dashboard
                   </h2>
                   <p className="text-sm text-muted-foreground">
                     Manage your healthcare journey
                   </p>
-                </motion.div>
+                </div>
                 
                 <PatientNavigation />
               </div>

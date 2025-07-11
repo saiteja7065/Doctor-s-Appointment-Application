@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useUser, UserButton } from '@clerk/nextjs';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+// Removed framer-motion for better performance - using CSS animations
 import { 
   Stethoscope, 
   Calendar, 
@@ -97,14 +97,9 @@ export default function DoctorNavigation() {
       </div>
 
       {/* Sidebar */}
-      <motion.aside
-        initial={false}
-        animate={{
-          x: isMobileMenuOpen ? 0 : '-100%',
-        }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      <aside
         className={`
-          fixed top-0 left-0 z-40 w-64 h-full glass-card border-r
+          fixed top-0 left-0 z-40 w-64 h-full glass-card border-r transition-transform duration-300 ease-in-out
           lg:translate-x-0 lg:static lg:inset-0
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
@@ -183,15 +178,12 @@ export default function DoctorNavigation() {
             <p>Version 1.0.0</p>
           </div>
         </div>
-      </motion.aside>
+      </aside>
 
       {/* Mobile overlay */}
       {isMobileMenuOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden animate-fade-in"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
