@@ -4,11 +4,12 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 // Removed framer-motion for better performance - using CSS animations
 import { Button } from '@/components/ui/button';
-import { 
-  Home, 
-  User, 
-  Calendar, 
-  CreditCard, 
+import NotificationCenter from '@/components/notifications/NotificationCenter';
+import {
+  Home,
+  User,
+  Calendar,
+  CreditCard,
   Settings,
   Stethoscope,
   Bell

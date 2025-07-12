@@ -11,10 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { 
-  Calendar, 
-  Clock, 
-  User, 
+import Link from 'next/link';
+import {
+  Calendar,
+  Clock,
+  User,
   Video,
   Phone,
   MessageSquare,
@@ -25,7 +26,8 @@ import {
   XCircle,
   AlertCircle,
   Eye,
-  FileText
+  FileText,
+  Monitor
 } from 'lucide-react';
 
 interface Appointment {
@@ -351,11 +353,7 @@ export default function DoctorAppointmentsPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <div className="animate-fade-in-up">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Appointments</h1>
@@ -369,14 +367,10 @@ export default function DoctorAppointmentsPage() {
             </Badge>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Filters */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
+      <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
         <Card className="glass-card">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-4">
@@ -407,14 +401,10 @@ export default function DoctorAppointmentsPage() {
             </div>
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
 
       {/* Appointments Tabs */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
+      <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="today" className="flex items-center space-x-2">
@@ -531,13 +521,25 @@ export default function DoctorAppointmentsPage() {
                         
                         <div className="flex items-center space-x-2 ml-4">
                           {appointment.status === 'scheduled' && appointment.meetingLink && (
-                            <Button
-                              onClick={() => joinConsultation(appointment)}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <Video className="w-4 h-4 mr-2" />
-                              Join Call
-                            </Button>
+                            <div className="flex items-center space-x-2">
+                              <Link href={`/consultation/${appointment.sessionId}/check`}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                                >
+                                  <Monitor className="w-4 h-4 mr-2" />
+                                  System Check
+                                </Button>
+                              </Link>
+                              <Button
+                                onClick={() => joinConsultation(appointment)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <Video className="w-4 h-4 mr-2" />
+                                Join Call
+                              </Button>
+                            </div>
                           )}
                           
                           {appointment.status === 'scheduled' && (
@@ -567,7 +569,7 @@ export default function DoctorAppointmentsPage() {
             )}
           </TabsContent>
         </Tabs>
-      </motion.div>
+      </div>
     </div>
   );
 }

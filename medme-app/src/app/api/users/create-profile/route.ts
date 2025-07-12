@@ -1,42 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import mongoose from 'mongoose';
-import { User } from '@/lib/models/User';
-import { Patient } from '@/lib/models/Patient';
-import { Doctor } from '@/lib/models/Doctor';
 import { UserRole, UserStatus } from '@/lib/types/user';
-
-// Connect to MongoDB
-async function connectToDatabase() {
-  if (mongoose.connections[0].readyState) {
-    return true;
-  }
-
-  if (!process.env.MONGODB_URI || process.env.MONGODB_URI.includes('demo:demo')) {
-    console.warn('MongoDB URI not configured or using placeholder credentials');
-    return false;
-  }
-
-  try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
-    return true;
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    return false;
-  }
-}
+import { connectToDatabase, getDatabase, COLLECTIONS } from '@/lib/mongodb';
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🚀 POST /api/users/create-profile - Starting...');
+
     // Verify authentication
     const { userId } = await auth();
+    console.log('👤 User ID from auth:', userId);
+
     if (!userId) {
+      console.log('❌ No user ID - unauthorized');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Parse request body
     const body = await request.json();
+    console.log('📝 Request body:', body);
     const { role, clerkId, email, firstName, lastName } = body;
 
     // Validate required fields
@@ -55,12 +37,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Connect to database
-    const isConnected = await connectToDatabase();
-    if (!isConnected) {
+    // Connect to database with timeout protection
+    console.log('🔌 Attempting to connect to database...');
+
+    let isConnected = false;
+    let db = null;
+
+    try {
+      // Set a timeout for database operations
+      const dbPromise = Promise.race([
+        connectToDatabase().then(async (connected) => {
+          if (connected) {
+            return await getDatabase();
+          }
+          return null;
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Database connection timeout')), 3000)
+        )
+      ]);
+
+      db = await dbPromise;
+      isConnected = !!db;
+      console.log('✅ Database connection result:', isConnected);
+    } catch (dbError) {
+      console.warn('⚠️ Database connection failed:', dbError.message);
+      isConnected = false;
+    }
+
+    if (!isConnected || !db) {
       // Return success response even when database is not available
       // This allows the application to work in development/demo mode
-      console.log('Database not available, returning success response for demo mode - updated');
+      console.log('Database not available, returning success response for demo mode');
       return NextResponse.json(
         {
           message: 'Profile created successfully (demo mode)',
@@ -79,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ clerkId });
+    const existingUser = await db.collection(COLLECTIONS.USERS).findOne({ clerkId });
     if (existingUser) {
       return NextResponse.json(
         { error: 'User profile already exists' },
@@ -87,31 +95,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create base user
-    const user = new User({
+    // Create base user document
+    const userDoc = {
       clerkId,
       email,
       firstName,
       lastName,
       role,
       status: role === UserRole.DOCTOR ? UserStatus.PENDING : UserStatus.ACTIVE,
-    });
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
 
-    await user.save();
+    const userResult = await db.collection(COLLECTIONS.USERS).insertOne(userDoc);
+    const insertedUserId = userResult.insertedId;
 
     // Create role-specific profile
     if (role === UserRole.PATIENT) {
-      const patient = new Patient({
-        userId: user._id,
+      const patientDoc = {
+        userId: insertedUserId,
         clerkId,
         creditBalance: 2, // Free credits for new patients
         subscriptionPlan: 'free',
         subscriptionStatus: 'inactive',
-      });
-      await patient.save();
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await db.collection(COLLECTIONS.PATIENTS).insertOne(patientDoc);
     } else if (role === UserRole.DOCTOR) {
-      const doctor = new Doctor({
-        userId: user._id,
+      const doctorDoc = {
+        userId: insertedUserId,
         clerkId,
         verificationStatus: 'pending',
         specialty: 'general_practice', // Default, will be updated during verification
@@ -122,21 +135,23 @@ export async function POST(request: NextRequest) {
         availability: [],
         languages: ['English'],
         timeZone: 'UTC',
-      });
-      await doctor.save();
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await db.collection(COLLECTIONS.DOCTORS).insertOne(doctorDoc);
     }
 
     return NextResponse.json(
-      { 
+      {
         message: 'Profile created successfully',
         user: {
-          id: user._id,
-          clerkId: user.clerkId,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
-          status: user.status,
+          id: insertedUserId.toString(),
+          clerkId: userDoc.clerkId,
+          email: userDoc.email,
+          firstName: userDoc.firstName,
+          lastName: userDoc.lastName,
+          role: userDoc.role,
+          status: userDoc.status,
         }
       },
       { status: 201 }
@@ -146,20 +161,29 @@ export async function POST(request: NextRequest) {
     console.error('💥 Error creating user profile:', error);
     console.error('💥 Error stack:', error.stack);
 
+    // Parse request body again for fallback response (since it might not be in scope)
+    let fallbackBody: any = {};
+    try {
+      const requestClone = request.clone();
+      fallbackBody = await requestClone.json();
+    } catch (parseError) {
+      console.error('Could not parse request body for fallback:', parseError);
+    }
+
     // Return a fallback success response instead of 500 error
     return NextResponse.json(
       {
         message: 'Profile created successfully (fallback mode)',
         user: {
-          id: 'fallback_' + (body?.clerkId || 'unknown'),
-          clerkId: body?.clerkId || '',
-          email: body?.email || '',
-          firstName: body?.firstName || '',
-          lastName: body?.lastName || '',
-          role: body?.role || 'patient',
-          status: body?.role === 'doctor' ? 'pending' : 'active',
+          id: 'fallback_' + (fallbackBody?.clerkId || 'unknown'),
+          clerkId: fallbackBody?.clerkId || '',
+          email: fallbackBody?.email || '',
+          firstName: fallbackBody?.firstName || '',
+          lastName: fallbackBody?.lastName || '',
+          role: fallbackBody?.role || 'patient',
+          status: fallbackBody?.role === 'doctor' ? 'pending' : 'active',
         },
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         fallback: true
       },
       { status: 201 } // Return 201 instead of 500 to prevent frontend errors

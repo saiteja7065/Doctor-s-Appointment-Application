@@ -1,34 +1,37 @@
+import { Vonage } from '@vonage/server-sdk';
+
 // Vonage configuration
 const vonageConfig = {
   apiKey: process.env.VONAGE_API_KEY || '',
   apiSecret: process.env.VONAGE_API_SECRET || '',
   applicationId: process.env.VONAGE_APPLICATION_ID || '',
+  privateKeyPath: process.env.VONAGE_PRIVATE_KEY_PATH || '',
 };
 
-// For demo purposes, we'll use a simplified approach
-// In production, you would use the actual Vonage SDK
-export function getVonageClient() {
+// Initialize Vonage client
+let vonageClient: Vonage | null = null;
+
+export function getVonageClient(): Vonage | null {
   if (!vonageConfig.apiKey || !vonageConfig.apiSecret) {
     console.warn('Vonage credentials not configured. Video features will use demo mode.');
     return null;
   }
 
-  // Return a mock client for demo purposes
-  // In production, initialize the actual Vonage client here
-  return {
-    video: {
-      createSession: async (options: any) => {
-        // Mock session creation
-        return {
-          sessionId: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        };
-      },
-      generateToken: (sessionId: string, options: any) => {
-        // Mock token generation
-        return `token_${sessionId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      }
+  if (!vonageClient) {
+    try {
+      vonageClient = new Vonage({
+        apiKey: vonageConfig.apiKey,
+        apiSecret: vonageConfig.apiSecret,
+        applicationId: vonageConfig.applicationId,
+        privateKey: vonageConfig.privateKeyPath ? require('fs').readFileSync(vonageConfig.privateKeyPath) : undefined,
+      });
+    } catch (error) {
+      console.error('Failed to initialize Vonage client:', error);
+      return null;
     }
-  };
+  }
+
+  return vonageClient;
 }
 
 export interface VonageSession {
@@ -42,7 +45,7 @@ export interface VonageSession {
  */
 export async function createVideoSession(appointmentId: string): Promise<VonageSession> {
   const client = getVonageClient();
-  
+
   if (!client) {
     // Return demo session data when Vonage is not configured
     const demoSessionId = `demo_session_${appointmentId}_${Date.now()}`;
@@ -54,19 +57,20 @@ export async function createVideoSession(appointmentId: string): Promise<VonageS
   }
 
   try {
-    // Create a new session
-    const session = await client.video.createSession({
+    // Create a new session using the Video API
+    const sessionResponse = await client.video.createSession({
       mediaMode: 'routed', // Use routed mode for better reliability
       archiveMode: 'manual', // Allow manual recording if needed
     });
 
-    if (!session.sessionId) {
+    const sessionId = sessionResponse.sessionId;
+    if (!sessionId) {
       throw new Error('Failed to create Vonage session');
     }
 
-    // Generate tokens for the session
-    const patientToken = client.video.generateToken(session.sessionId, {
-      role: 'publisher', // Can publish and subscribe
+    // Generate a default token (we'll generate role-specific tokens in generateSessionToken)
+    const defaultToken = await client.video.generateClientToken(sessionId, {
+      role: 'publisher',
       data: JSON.stringify({
         role: 'patient',
         appointmentId
@@ -74,28 +78,17 @@ export async function createVideoSession(appointmentId: string): Promise<VonageS
       expireTime: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 hours
     });
 
-    const doctorToken = client.video.generateToken(session.sessionId, {
-      role: 'publisher', // Can publish and subscribe
-      data: JSON.stringify({
-        role: 'doctor',
-        appointmentId
-      }),
-      expireTime: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 hours
-    });
-
-    // For now, we'll use the patient token as the default
-    // In a real implementation, you'd store both tokens and provide them based on user role
-    const meetingLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/consultation/${session.sessionId}`;
+    const meetingLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/consultation/${sessionId}`;
 
     return {
-      sessionId: session.sessionId,
-      token: patientToken,
+      sessionId,
+      token: defaultToken,
       meetingLink,
     };
 
   } catch (error) {
     console.error('Error creating Vonage session:', error);
-    
+
     // Fallback to demo session
     const demoSessionId = `demo_session_${appointmentId}_${Date.now()}`;
     return {
@@ -110,20 +103,20 @@ export async function createVideoSession(appointmentId: string): Promise<VonageS
  * Generate a token for an existing session
  */
 export async function generateSessionToken(
-  sessionId: string, 
+  sessionId: string,
   role: 'patient' | 'doctor',
   appointmentId: string
 ): Promise<string> {
   const client = getVonageClient();
-  
+
   if (!client) {
     // Return demo token when Vonage is not configured
     return `demo_token_${role}_${appointmentId}_${Date.now()}`;
   }
 
   try {
-    const token = client.video.generateToken(sessionId, {
-      role: 'publisher',
+    const token = await client.video.generateClientToken(sessionId, {
+      role: 'publisher', // Both patients and doctors can publish and subscribe
       data: JSON.stringify({
         role,
         appointmentId
@@ -140,9 +133,81 @@ export async function generateSessionToken(
 }
 
 /**
+ * Archive (record) a session
+ */
+export async function startArchive(sessionId: string, name?: string): Promise<string | null> {
+  const client = getVonageClient();
+
+  if (!client) {
+    console.warn('Vonage client not available for archiving');
+    return null;
+  }
+
+  try {
+    const archive = await client.video.startArchive(sessionId, {
+      name: name || `consultation_${sessionId}_${Date.now()}`,
+      outputMode: 'composed',
+      resolution: '1280x720',
+    });
+
+    return archive.id;
+  } catch (error) {
+    console.error('Error starting archive:', error);
+    return null;
+  }
+}
+
+/**
+ * Stop archiving a session
+ */
+export async function stopArchive(archiveId: string): Promise<boolean> {
+  const client = getVonageClient();
+
+  if (!client) {
+    console.warn('Vonage client not available for archiving');
+    return false;
+  }
+
+  try {
+    await client.video.stopArchive(archiveId);
+    return true;
+  } catch (error) {
+    console.error('Error stopping archive:', error);
+    return false;
+  }
+}
+
+/**
+ * Get session information
+ */
+export async function getSessionInfo(sessionId: string): Promise<any> {
+  const client = getVonageClient();
+
+  if (!client) {
+    return {
+      sessionId,
+      status: 'demo',
+      connectionCount: 0,
+    };
+  }
+
+  try {
+    const sessionInfo = await client.video.getSession(sessionId);
+    return sessionInfo;
+  } catch (error) {
+    console.error('Error getting session info:', error);
+    return {
+      sessionId,
+      status: 'error',
+      connectionCount: 0,
+    };
+  }
+}
+
+/**
  * Get session information for an appointment
  */
-export async function getSessionInfo(sessionId: string): Promise<{
+export async function getAppointmentSessionInfo(sessionId: string): Promise<{
   sessionId: string;
   isActive: boolean;
   connectionCount: number;

@@ -11,14 +11,20 @@ import { Patient } from '@/lib/models/Patient';
  */
 export async function POST(request: NextRequest) {
   try {
+    console.log('🚀 POST /api/users/onboarding - Starting...');
+
     // Verify authentication
     const { userId } = await auth();
+    console.log('👤 User ID from auth:', userId);
+
     if (!userId) {
+      console.log('❌ No user ID - unauthorized');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Parse request body
     const body = await request.json();
+    console.log('📝 Request body:', body);
     const { role, firstName, lastName, email } = body;
 
     // Validate required fields

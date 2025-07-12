@@ -300,11 +300,7 @@ export default function DoctorEarningsPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <div className="animate-fade-in-up">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Earnings</h1>
@@ -327,15 +323,11 @@ export default function DoctorEarningsPage() {
             </Button>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Earnings Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
+        <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
           <Card className="glass-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Available Balance</CardTitle>
@@ -350,13 +342,9 @@ export default function DoctorEarningsPage() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
+        <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           <Card className="glass-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Balance</CardTitle>
@@ -371,13 +359,9 @@ export default function DoctorEarningsPage() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
+        <div className="animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
           <Card className="glass-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">This Month</CardTitle>
@@ -397,13 +381,9 @@ export default function DoctorEarningsPage() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
+        <div className="animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
           <Card className="glass-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
@@ -418,15 +398,11 @@ export default function DoctorEarningsPage() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       </div>
 
       {/* Earnings Details */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-      >
+      <div className="animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
         <Tabs defaultValue="transactions" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="transactions">Transaction History</TabsTrigger>
@@ -546,7 +522,7 @@ export default function DoctorEarningsPage() {
             </Card>
           </TabsContent>
         </Tabs>
-      </motion.div>
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Stethoscope, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PatientNavigation from '@/components/navigation/PatientNavigation';
+import NotificationCenter from '@/components/notifications/NotificationCenter';
 import { useState } from 'react';
 
 export default function PatientLayout({
@@ -46,13 +47,14 @@ export default function PatientLayout({
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            <NotificationCenter />
             <div className="hidden sm:block text-right">
               <div className="text-sm font-medium text-foreground">
                 {user?.firstName} {user?.lastName}
               </div>
               <div className="text-xs text-muted-foreground">Patient</div>
             </div>
-            <UserButton 
+            <UserButton
               appearance={{
                 elements: {
                   avatarBox: "w-10 h-10",

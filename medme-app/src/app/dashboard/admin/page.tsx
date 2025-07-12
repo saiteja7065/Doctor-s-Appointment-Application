@@ -17,6 +17,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { LazyMotionDiv } from '@/components/ui/lazy-motion';
 
 interface AdminStats {
   totalUsers: number;
@@ -113,7 +114,7 @@ export default function AdminDashboard() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <motion.div
+      <LazyMotionDiv
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -134,12 +135,12 @@ export default function AdminDashboard() {
             </Badge>
           </div>
         </div>
-      </motion.div>
+      </LazyMotionDiv>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Users */}
-        <motion.div
+        <LazyMotionDiv
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
@@ -156,10 +157,10 @@ export default function AdminDashboard() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </LazyMotionDiv>
 
         {/* Pending Doctor Verifications */}
-        <motion.div
+        <LazyMotionDiv
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -178,10 +179,10 @@ export default function AdminDashboard() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </LazyMotionDiv>
 
         {/* Today's Appointments */}
-        <motion.div
+        <LazyMotionDiv
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
@@ -198,10 +199,10 @@ export default function AdminDashboard() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </LazyMotionDiv>
 
         {/* Platform Revenue */}
-        <motion.div
+        <LazyMotionDiv
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
@@ -220,13 +221,13 @@ export default function AdminDashboard() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </LazyMotionDiv>
       </div>
 
       {/* Action Items */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Urgent Actions */}
-        <motion.div
+        <LazyMotionDiv
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
@@ -267,10 +268,10 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </LazyMotionDiv>
 
         {/* System Health */}
-        <motion.div
+        <LazyMotionDiv
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
@@ -315,7 +316,7 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </LazyMotionDiv>
       </div>
     </div>
   );

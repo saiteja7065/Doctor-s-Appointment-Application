@@ -6,18 +6,21 @@ import { useUser } from '@clerk/nextjs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Calendar, 
-  Clock, 
-  User, 
+import {
+  Calendar,
+  Clock,
+  User,
   Video,
   Plus,
   Filter,
   Search,
-  MoreVertical
+  MoreVertical,
+  Monitor,
+  Settings
 } from 'lucide-react';
 import Link from 'next/link';
 import { TimezoneDisplay } from '@/components/ui/timezone-display';
+import { LazyMotionDiv } from '@/components/ui/lazy-motion';
 
 interface Appointment {
   id: string;
@@ -161,7 +164,7 @@ export default function AppointmentsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <motion.div
+      <LazyMotionDiv
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -180,10 +183,10 @@ export default function AppointmentsPage() {
             </Button>
           </Link>
         </div>
-      </motion.div>
+      </LazyMotionDiv>
 
       {/* Filters */}
-      <motion.div
+      <LazyMotionDiv
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
@@ -205,10 +208,10 @@ export default function AppointmentsPage() {
             </div>
           </CardContent>
         </Card>
-      </motion.div>
+      </LazyMotionDiv>
 
       {/* Appointments List */}
-      <motion.div
+      <LazyMotionDiv
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
@@ -251,7 +254,7 @@ export default function AppointmentsPage() {
           </Card>
         ) : (
           filteredAppointments.map((appointment, index) => (
-            <motion.div
+            <LazyMotionDiv
               key={appointment.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -301,14 +304,26 @@ export default function AppointmentsPage() {
                         </Badge>
 
                         {canJoinCall(appointment) && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleJoinCall(appointment)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <Video className="h-4 w-4 mr-2" />
-                            Join Call
-                          </Button>
+                          <div className="flex items-center space-x-2">
+                            <Link href={`/consultation/${appointment.sessionId}/check`}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                              >
+                                <Monitor className="h-4 w-4 mr-2" />
+                                System Check
+                              </Button>
+                            </Link>
+                            <Button
+                              size="sm"
+                              onClick={() => handleJoinCall(appointment)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Video className="h-4 w-4 mr-2" />
+                              Join Call
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -319,10 +334,10 @@ export default function AppointmentsPage() {
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </LazyMotionDiv>
           ))
         )}
-      </motion.div>
+      </LazyMotionDiv>
     </div>
   );
 }

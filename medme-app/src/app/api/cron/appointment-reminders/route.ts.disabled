@@ -1,0 +1,185 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { connectToDatabase } from '@/lib/mongodb';
+import Appointment from '@/lib/models/Appointment';
+import { Patient } from '@/lib/models/Patient';
+import { Doctor } from '@/lib/models/Doctor';
+import { sendAppointmentReminder } from '@/lib/email';
+
+/**
+ * POST /api/cron/appointment-reminders
+ * Send appointment reminders for appointments happening tomorrow
+ * This endpoint should be called by a cron job service (like Vercel Cron or external service)
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // Verify the request is from a trusted source (optional)
+    const authHeader = request.headers.get('authorization');
+    const cronSecret = process.env.CRON_SECRET;
+    
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Connect to database
+    const isConnected = await connectToDatabase();
+    if (!isConnected) {
+      return NextResponse.json(
+        { error: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
+
+    // Calculate tomorrow's date range
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+
+    const dayAfterTomorrow = new Date(tomorrow);
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
+
+    console.log(`Checking for appointments between ${tomorrow.toISOString()} and ${dayAfterTomorrow.toISOString()}`);
+
+    // Find appointments for tomorrow that haven't been reminded yet
+    const appointments = await Appointment.find({
+      appointmentDateTime: {
+        $gte: tomorrow,
+        $lt: dayAfterTomorrow
+      },
+      status: { $in: ['confirmed', 'scheduled'] },
+      reminderSent: { $ne: true } // Only send reminders once
+    }).populate('patientId doctorId');
+
+    console.log(`Found ${appointments.length} appointments for reminder`);
+
+    let successCount = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+
+    // Send reminders for each appointment
+    for (const appointment of appointments) {
+      try {
+        const patient = appointment.patientId as any;
+        const doctor = appointment.doctorId as any;
+
+        if (!patient || !doctor) {
+          console.error(`Missing patient or doctor data for appointment ${appointment._id}`);
+          errorCount++;
+          errors.push(`Missing patient or doctor data for appointment ${appointment._id}`);
+          continue;
+        }
+
+        // Send reminder email
+        await sendAppointmentReminder({
+          patientEmail: patient.personalInfo.email,
+          patientName: patient.personalInfo.fullName,
+          doctorName: doctor.personalInfo.fullName,
+          appointmentTime: new Date(appointment.appointmentDateTime).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          consultationType: appointment.consultationType,
+          sessionId: appointment.sessionId,
+        });
+
+        // Mark reminder as sent
+        appointment.reminderSent = true;
+        await appointment.save();
+
+        successCount++;
+        console.log(`Sent reminder for appointment ${appointment._id} to ${patient.personalInfo.email}`);
+
+      } catch (error) {
+        console.error(`Failed to send reminder for appointment ${appointment._id}:`, error);
+        errorCount++;
+        errors.push(`Failed to send reminder for appointment ${appointment._id}: ${error}`);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Processed ${appointments.length} appointments`,
+      results: {
+        total: appointments.length,
+        successful: successCount,
+        failed: errorCount,
+        errors: errors.length > 0 ? errors : undefined
+      }
+    });
+
+  } catch (error) {
+    console.error('Appointment reminder cron job error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * GET /api/cron/appointment-reminders
+ * Check upcoming appointments that need reminders (for testing)
+ */
+export async function GET(request: NextRequest) {
+  try {
+    // Connect to database
+    const isConnected = await connectToDatabase();
+    if (!isConnected) {
+      return NextResponse.json(
+        { error: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
+
+    // Calculate tomorrow's date range
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+
+    const dayAfterTomorrow = new Date(tomorrow);
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
+
+    // Find appointments for tomorrow
+    const appointments = await Appointment.find({
+      appointmentDateTime: {
+        $gte: tomorrow,
+        $lt: dayAfterTomorrow
+      },
+      status: { $in: ['confirmed', 'scheduled'] }
+    }).populate('patientId doctorId');
+
+    const appointmentDetails = appointments.map(appointment => {
+      const patient = appointment.patientId as any;
+      const doctor = appointment.doctorId as any;
+
+      return {
+        id: appointment._id,
+        patientName: patient?.personalInfo?.fullName || 'Unknown',
+        patientEmail: patient?.personalInfo?.email || 'Unknown',
+        doctorName: doctor?.personalInfo?.fullName || 'Unknown',
+        appointmentTime: appointment.appointmentDateTime,
+        consultationType: appointment.consultationType,
+        reminderSent: appointment.reminderSent || false,
+        status: appointment.status
+      };
+    });
+
+    return NextResponse.json({
+      success: true,
+      tomorrow: tomorrow.toISOString(),
+      dayAfterTomorrow: dayAfterTomorrow.toISOString(),
+      appointments: appointmentDetails,
+      total: appointments.length,
+      needingReminders: appointments.filter(apt => !apt.reminderSent).length
+    });
+
+  } catch (error) {
+    console.error('Error checking appointment reminders:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

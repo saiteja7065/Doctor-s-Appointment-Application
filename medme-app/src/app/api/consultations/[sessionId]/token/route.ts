@@ -4,7 +4,10 @@ import { connectToDatabase } from '@/lib/mongodb';
 import Appointment from '@/lib/models/Appointment';
 import { Doctor } from '@/lib/models/Doctor';
 import { Patient } from '@/lib/models/Patient';
+import { User } from '@/lib/models/User';
 import { generateSessionToken } from '@/lib/vonage';
+import { sendDoctorEarningsNotification } from '@/lib/email';
+import { sendNotification, createNotification, NotificationType, NotificationPriority } from '@/lib/notifications';
 
 /**
  * GET /api/consultations/[sessionId]/token
@@ -110,6 +113,55 @@ export async function GET(
     if (appointment.status === 'scheduled') {
       appointment.status = 'in_progress';
       await appointment.save();
+
+      // Send consultation started notifications
+      try {
+        // Patient notification
+        const patientForNotification = await Patient.findById(appointment.patientId);
+        if (patientForNotification) {
+          createNotification(
+            patientForNotification.clerkId,
+            'patient',
+            NotificationType.CONSULTATION_STARTED,
+            'Consultation Started',
+            `Your consultation with ${appointment.doctorName} has started.`,
+            {
+              priority: NotificationPriority.URGENT,
+              actionUrl: `/consultation/${sessionId}`,
+              actionLabel: 'Join Consultation',
+              metadata: {
+                appointmentId: appointment._id.toString(),
+                sessionId,
+                doctorName: appointment.doctorName
+              }
+            }
+          );
+        }
+
+        // Doctor notification
+        const doctor = await Doctor.findById(appointment.doctorId);
+        if (doctor) {
+          createNotification(
+            doctor.clerkId,
+            'doctor',
+            NotificationType.CONSULTATION_STARTED,
+            'Consultation Started',
+            `Your consultation with ${appointment.patientName} has started.`,
+            {
+              priority: NotificationPriority.URGENT,
+              actionUrl: `/consultation/${sessionId}`,
+              actionLabel: 'Join Consultation',
+              metadata: {
+                appointmentId: appointment._id.toString(),
+                sessionId,
+                patientName: appointment.patientName
+              }
+            }
+          );
+        }
+      } catch (notificationError) {
+        console.error('Failed to send consultation started notifications:', notificationError);
+      }
     }
 
     return NextResponse.json({
@@ -180,9 +232,9 @@ export async function POST(
 
     // Verify user authorization
     let isAuthorized = false;
-    
-    const patient = await Patient.findOne({ clerkId: userId });
-    if (patient && appointment.patientId.equals(patient._id)) {
+
+    const patientForAuth = await Patient.findOne({ clerkId: userId });
+    if (patientForAuth && appointment.patientId.equals(patientForAuth._id)) {
       isAuthorized = true;
     }
     
@@ -207,9 +259,77 @@ export async function POST(
 
     // Update doctor earnings if not already done
     const doctor = await Doctor.findById(appointment.doctorId);
+    const patientForEarnings = await Patient.findById(appointment.patientId);
+    const doctorUser = await User.findById(doctor?.userId);
+
     if (doctor) {
+      const previousEarnings = doctor.totalEarnings || 0;
       doctor.totalEarnings += appointment.consultationFee;
       await doctor.save();
+
+      // Send doctor earnings notification email
+      if (doctorUser && patient) {
+        try {
+          await sendDoctorEarningsNotification({
+            doctorEmail: doctorUser.email,
+            doctorName: `${doctorUser.firstName} ${doctorUser.lastName}`,
+            patientName: appointment.patientName,
+            consultationDate: new Date().toLocaleDateString(),
+            duration: 30, // Default duration, could be dynamic
+            earningsAmount: appointment.consultationFee,
+            totalEarnings: doctor.totalEarnings,
+            availableBalance: doctor.totalEarnings, // Simplified - could have withdrawals deducted
+            monthlyEarnings: doctor.totalEarnings, // Simplified - could calculate actual monthly
+          });
+        } catch (emailError) {
+          console.error('Failed to send doctor earnings notification email:', emailError);
+        }
+
+        // Send consultation completed notifications
+        try {
+          // Doctor notification
+          createNotification(
+            doctorUser.clerkId,
+            'doctor',
+            NotificationType.CONSULTATION_ENDED,
+            'Consultation Completed',
+            `Your consultation with ${appointment.patientName} has been completed. $${appointment.consultationFee} has been added to your earnings.`,
+            {
+              priority: NotificationPriority.HIGH,
+              actionUrl: '/dashboard/doctor/earnings',
+              actionLabel: 'View Earnings',
+              metadata: {
+                appointmentId: appointment._id.toString(),
+                patientName: appointment.patientName,
+                earnings: appointment.consultationFee,
+                totalEarnings: doctor.totalEarnings
+              }
+            }
+          );
+
+          // Patient notification
+          if (patient) {
+            createNotification(
+              patient.clerkId,
+              'patient',
+              NotificationType.CONSULTATION_ENDED,
+              'Consultation Completed',
+              `Your consultation with ${appointment.doctorName} has been completed.`,
+              {
+                priority: NotificationPriority.HIGH,
+                actionUrl: '/dashboard/patient/appointments',
+                actionLabel: 'View Appointment',
+                metadata: {
+                  appointmentId: appointment._id.toString(),
+                  doctorName: appointment.doctorName
+                }
+              }
+            );
+          }
+        } catch (notificationError) {
+          console.error('Failed to send consultation completion notification:', notificationError);
+        }
+      }
     }
 
     return NextResponse.json({

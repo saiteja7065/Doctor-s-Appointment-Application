@@ -33,7 +33,7 @@ const MotionFallback = ({ children, className }: { children: ReactNode; classNam
 
 // Wrapper components with Suspense
 export const LazyMotionDiv = (props: HTMLMotionProps<'div'>) => (
-  <Suspense fallback={<MotionFallback className={props.className}>{props.children}</MotionFallback>}>
+  <Suspense fallback={<MotionFallback className={props.className}>{props.children as ReactNode}</MotionFallback>}>
     <MotionDiv {...props} />
   </Suspense>
 );

@@ -23,7 +23,12 @@ jest.mock('next/navigation', () => ({
 // Mock Next.js server components
 global.Request = class MockRequest {
   constructor(url, options = {}) {
-    this.url = url
+    Object.defineProperty(this, 'url', {
+      value: url,
+      writable: false,
+      enumerable: true,
+      configurable: true
+    })
     this.method = options.method || 'GET'
     this.headers = new Map(Object.entries(options.headers || {}))
     this.body = options.body
@@ -34,7 +39,23 @@ global.Response = class MockResponse {
   constructor(body, options = {}) {
     this.body = body
     this.status = options.status || 200
+    this.statusText = options.statusText || 'OK'
     this.headers = new Map(Object.entries(options.headers || {}))
+    this.ok = this.status >= 200 && this.status < 300
+  }
+
+  async json() {
+    if (typeof this.body === 'string') {
+      return JSON.parse(this.body)
+    }
+    return this.body
+  }
+
+  async text() {
+    if (typeof this.body === 'string') {
+      return this.body
+    }
+    return JSON.stringify(this.body)
   }
 
   static json(data, options = {}) {
@@ -88,6 +109,66 @@ jest.mock('@clerk/nextjs/server', () => ({
   })),
   clerkMiddleware: jest.fn((handler) => handler),
   createRouteMatcher: jest.fn(() => jest.fn(() => false)),
+}))
+
+// Mock User Role and Status enums
+jest.mock('@/lib/models/User', () => ({
+  UserRole: {
+    PATIENT: 'patient',
+    DOCTOR: 'doctor',
+    ADMIN: 'admin',
+  },
+  UserStatus: {
+    ACTIVE: 'active',
+    INACTIVE: 'inactive',
+    SUSPENDED: 'suspended',
+    PENDING_VERIFICATION: 'pending_verification',
+  },
+  User: {
+    findOne: jest.fn(),
+    findById: jest.fn(),
+    create: jest.fn(),
+    updateOne: jest.fn(),
+    deleteOne: jest.fn(),
+  },
+}))
+
+// Mock RBAC functions
+jest.mock('@/lib/auth/rbac', () => ({
+  withRBAC: jest.fn((config, handler) => handler),
+  withPatientAuth: jest.fn((handler) => handler),
+  withDoctorAuth: jest.fn((handler) => handler),
+  withAdminAuth: jest.fn((handler) => handler),
+  authenticateUser: jest.fn(() => Promise.resolve({
+    userId: 'test-user-id',
+    clerkId: 'test-clerk-id',
+    role: 'patient',
+    status: 'active',
+    user: { id: 'test-user-id', role: 'patient' }
+  })),
+  UserRole: {
+    PATIENT: 'patient',
+    DOCTOR: 'doctor',
+    ADMIN: 'admin',
+  },
+  RBACError: class RBACError extends Error {
+    constructor(message, statusCode = 403) {
+      super(message);
+      this.statusCode = statusCode;
+    }
+  },
+  AuthenticationError: class AuthenticationError extends Error {
+    constructor(message = 'Authentication required') {
+      super(message);
+      this.statusCode = 401;
+    }
+  },
+  AuthorizationError: class AuthorizationError extends Error {
+    constructor(message = 'Insufficient permissions') {
+      super(message);
+      this.statusCode = 403;
+    }
+  },
 }))
 
 // Note: MongoDB and model mocks are handled in individual test files
@@ -173,11 +254,13 @@ if (typeof window !== 'undefined') {
   })
 }
 
-// Mock scrollTo
-Object.defineProperty(window, 'scrollTo', {
-  writable: true,
-  value: jest.fn(),
-})
+// Mock scrollTo (only in jsdom environment)
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'scrollTo', {
+    writable: true,
+    value: jest.fn(),
+  })
+}
 
 // Suppress console errors in tests unless explicitly testing them
 const originalError = console.error
@@ -185,7 +268,9 @@ beforeAll(() => {
   console.error = (...args) => {
     if (
       typeof args[0] === 'string' &&
-      args[0].includes('Warning: ReactDOM.render is no longer supported')
+      (args[0].includes('Warning: ReactDOM.render is no longer supported') ||
+       args[0].includes('Warning: An update to') ||
+       args[0].includes('act(...)'))
     ) {
       return
     }

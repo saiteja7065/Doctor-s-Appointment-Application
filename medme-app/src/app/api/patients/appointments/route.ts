@@ -5,13 +5,19 @@ import { Patient } from '@/lib/models/Patient';
 import { Doctor } from '@/lib/models/Doctor';
 import { User } from '@/lib/models/User';
 import { withPatientAuth } from '@/lib/auth/rbac';
+import { sendRefundNotification } from '@/lib/email';
+import { sendNotification, createNotification, NotificationType, NotificationPriority } from '@/lib/notifications';
+import { getAppointmentDisplayTime, getUserTimezone } from '@/lib/timezone';
 
 interface AppointmentResponse {
   id: string;
   doctorName: string;
   doctorSpecialty: string;
   appointmentDate: string;
-  appointmentTime: string;
+  appointmentTime: string; // Time in patient's timezone
+  appointmentTimeUTC: string; // Time in UTC
+  patientTimezone?: string;
+  doctorTimezone?: string;
   duration: number;
   status: string;
   topic: string;
@@ -35,6 +41,7 @@ export async function GET(request: NextRequest) {
       const status = searchParams.get('status'); // 'upcoming', 'completed', 'cancelled'
       const limit = parseInt(searchParams.get('limit') || '10');
       const page = parseInt(searchParams.get('page') || '1');
+      const timezone = searchParams.get('timezone') || getUserTimezone();
 
       // Connect to database
       const isConnected = await connectToDatabase();
@@ -282,6 +289,71 @@ export async function POST(request: NextRequest) {
       if (refundCredits) {
         patient.creditBalance += appointment.consultationFee;
         await patient.save();
+
+        // Send refund notification email
+        try {
+          await sendRefundNotification({
+            patientEmail: patient.personalInfo.email,
+            patientName: patient.personalInfo.fullName,
+            doctorName: appointment.doctorName,
+            appointmentDate: new Date(`${appointment.appointmentDate}T${appointment.appointmentTime}`).toLocaleDateString(),
+            refundAmount: appointment.consultationFee,
+            newBalance: patient.creditBalance,
+            cancellationDate: new Date().toLocaleDateString(),
+          });
+        } catch (emailError) {
+          console.error('Failed to send refund notification email:', emailError);
+        }
+
+        // Send in-app notifications for cancellation
+        try {
+          // Patient notification
+          createNotification(
+            patient.clerkId,
+            'patient',
+            NotificationType.APPOINTMENT_CANCELLED,
+            'Appointment Cancelled',
+            `Your appointment with ${appointment.doctorName} has been cancelled${refundCredits ? ' and credits have been refunded' : ''}.`,
+            {
+              priority: NotificationPriority.MEDIUM,
+              actionUrl: '/dashboard/patient/appointments',
+              actionLabel: 'View Appointments',
+              metadata: {
+                appointmentId: appointment._id.toString(),
+                doctorName: appointment.doctorName,
+                refunded: refundCredits,
+                refundAmount: refundCredits ? appointment.consultationFee : 0,
+                newBalance: patient.creditBalance
+              }
+            }
+          );
+
+          // Doctor notification
+          const doctor = await User.findOne({
+            _id: { $in: await Doctor.find({ personalInfo: { fullName: appointment.doctorName } }).distinct('userId') }
+          });
+
+          if (doctor) {
+            createNotification(
+              doctor.clerkId,
+              'doctor',
+              NotificationType.APPOINTMENT_CANCELLED,
+              'Appointment Cancelled',
+              `${appointment.patientName} has cancelled their appointment scheduled for ${new Date(`${appointment.appointmentDate}T${appointment.appointmentTime}`).toLocaleDateString()}.`,
+              {
+                priority: NotificationPriority.MEDIUM,
+                actionUrl: '/dashboard/doctor/appointments',
+                actionLabel: 'View Appointments',
+                metadata: {
+                  appointmentId: appointment._id.toString(),
+                  patientName: appointment.patientName
+                }
+              }
+            );
+          }
+        } catch (notificationError) {
+          console.error('Failed to send cancellation notification:', notificationError);
+        }
       }
 
       return NextResponse.json({

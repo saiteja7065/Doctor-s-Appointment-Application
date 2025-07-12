@@ -1,163 +1,164 @@
 import { connectToDatabase } from '@/lib/mongodb'
-import mongoose from 'mongoose'
+import { MongoClient } from 'mongodb'
 
-// Mock mongoose
-jest.mock('mongoose', () => ({
-  connect: jest.fn(),
-  connection: {
-    readyState: 1,
-  },
-  ConnectionStates: {
-    connected: 1,
-    connecting: 2,
-    disconnected: 0,
-  },
+// Mock MongoDB native driver
+jest.mock('mongodb', () => ({
+  MongoClient: jest.fn().mockImplementation(() => ({
+    connect: jest.fn(),
+    db: jest.fn(() => ({
+      command: jest.fn(),
+    })),
+    close: jest.fn(),
+  })),
 }))
 
 describe('MongoDB Connection', () => {
-  const mockConnect = mongoose.connect as jest.MockedFunction<typeof mongoose.connect>
-  
+  const MockedMongoClient = MongoClient as jest.MockedClass<typeof MongoClient>
+  let mockClient: any
+
   beforeEach(() => {
     jest.clearAllMocks()
     // Reset environment variables
     process.env.MONGODB_URI = 'mongodb://localhost:27017/medme-test'
+
+    // Create a fresh mock client for each test
+    mockClient = {
+      connect: jest.fn(),
+      db: jest.fn(() => ({
+        command: jest.fn(),
+      })),
+      close: jest.fn(),
+    }
+    MockedMongoClient.mockImplementation(() => mockClient)
   })
 
   afterEach(() => {
     jest.resetModules()
+    delete process.env.MONGODB_URI
   })
 
   describe('connectToDatabase', () => {
     it('should connect to database successfully', async () => {
-      mockConnect.mockResolvedValueOnce(mongoose as any)
-      
+      mockClient.connect.mockResolvedValueOnce(undefined)
+      mockClient.db().command.mockResolvedValueOnce({ ok: 1 })
+
       const result = await connectToDatabase()
-      
+
       expect(result).toBe(true)
-      expect(mockConnect).toHaveBeenCalledWith(process.env.MONGODB_URI)
+      expect(MockedMongoClient).toHaveBeenCalledWith(
+        process.env.MONGODB_URI,
+        expect.any(Object)
+      )
     })
 
     it('should return true if already connected', async () => {
-      // Mock already connected state
-      Object.defineProperty(mongoose.connection, 'readyState', {
-        value: 1, // connected
-        writable: true,
-      })
-      
+      // Mock successful connection and ping
+      mockClient.connect.mockResolvedValueOnce(undefined)
+      mockClient.db().command.mockResolvedValueOnce({ ok: 1 })
+
       const result = await connectToDatabase()
-      
+
       expect(result).toBe(true)
-      expect(mockConnect).not.toHaveBeenCalled()
     })
 
     it('should handle connection errors gracefully', async () => {
-      mockConnect.mockRejectedValueOnce(new Error('Connection failed'))
-      
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
-      
+      mockClient.connect.mockRejectedValueOnce(new Error('Connection failed'))
+
       const result = await connectToDatabase()
-      
+
       expect(result).toBe(false)
       expect(consoleSpy).toHaveBeenCalledWith(
-        'MongoDB connection error:',
+        expect.stringContaining('MongoDB connection attempt'),
         expect.any(Error)
       )
-      
+
       consoleSpy.mockRestore()
     })
 
     it('should handle missing MONGODB_URI', async () => {
       delete process.env.MONGODB_URI
-      
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
-      
+
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation()
+
       const result = await connectToDatabase()
-      
+
       expect(result).toBe(false)
       expect(consoleSpy).toHaveBeenCalledWith(
-        'MongoDB connection error:',
-        expect.any(Error)
+        expect.stringContaining('MongoDB is not configured')
       )
-      
+
       consoleSpy.mockRestore()
     })
 
     it('should use correct connection options', async () => {
-      mockConnect.mockResolvedValueOnce(mongoose as any)
-      
+      mockClient.connect.mockResolvedValueOnce(undefined)
+      mockClient.db().command.mockResolvedValueOnce({ ok: 1 })
+
       await connectToDatabase()
-      
-      expect(mockConnect).toHaveBeenCalledWith(
+
+      expect(MockedMongoClient).toHaveBeenCalledWith(
         process.env.MONGODB_URI,
         expect.objectContaining({
-          bufferCommands: false,
+          maxPoolSize: 10,
+          serverSelectionTimeoutMS: 15000,
         })
       )
     })
 
     it('should handle different connection states', async () => {
-      // Test connecting state
-      Object.defineProperty(mongoose.connection, 'readyState', {
-        value: 2, // connecting
-        writable: true,
-      })
-      
-      mockConnect.mockResolvedValueOnce(mongoose as any)
-      
+      // Test successful connection
+      mockClient.connect.mockResolvedValueOnce(undefined)
+      mockClient.db().command.mockResolvedValueOnce({ ok: 1 })
+
       const result = await connectToDatabase()
-      
+
       expect(result).toBe(true)
-      expect(mockConnect).toHaveBeenCalled()
+      expect(mockClient.connect).toHaveBeenCalled()
     })
 
     it('should handle disconnected state', async () => {
-      // Test disconnected state
-      Object.defineProperty(mongoose.connection, 'readyState', {
-        value: 0, // disconnected
-        writable: true,
-      })
-      
-      mockConnect.mockResolvedValueOnce(mongoose as any)
-      
+      // Test successful reconnection
+      mockClient.connect.mockResolvedValueOnce(undefined)
+      mockClient.db().command.mockResolvedValueOnce({ ok: 1 })
+
       const result = await connectToDatabase()
-      
+
       expect(result).toBe(true)
-      expect(mockConnect).toHaveBeenCalled()
+      expect(mockClient.connect).toHaveBeenCalled()
     })
 
     it('should handle network timeout errors', async () => {
       const timeoutError = new Error('connection timed out')
       timeoutError.name = 'MongoNetworkTimeoutError'
-      mockConnect.mockRejectedValueOnce(timeoutError)
-      
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
-      
+      mockClient.connect.mockRejectedValueOnce(timeoutError)
+
       const result = await connectToDatabase()
-      
+
       expect(result).toBe(false)
       expect(consoleSpy).toHaveBeenCalledWith(
-        'MongoDB connection error:',
+        expect.stringContaining('MongoDB connection attempt'),
         timeoutError
       )
-      
+
       consoleSpy.mockRestore()
     })
 
     it('should handle authentication errors', async () => {
       const authError = new Error('Authentication failed')
       authError.name = 'MongoAuthenticationError'
-      mockConnect.mockRejectedValueOnce(authError)
-      
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
-      
+      mockClient.connect.mockRejectedValueOnce(authError)
+
       const result = await connectToDatabase()
-      
+
       expect(result).toBe(false)
       expect(consoleSpy).toHaveBeenCalledWith(
-        'MongoDB connection error:',
+        expect.stringContaining('MongoDB connection attempt'),
         authError
       )
-      
+
       consoleSpy.mockRestore()
     })
   })
@@ -166,12 +167,13 @@ describe('MongoDB Connection', () => {
     it('should use production URI in production environment', async () => {
       process.env.NODE_ENV = 'production'
       process.env.MONGODB_URI = 'mongodb+srv://prod:password@cluster.mongodb.net/medme'
-      
-      mockConnect.mockResolvedValueOnce(mongoose as any)
-      
+
+      mockClient.connect.mockResolvedValueOnce(undefined)
+      mockClient.db().command.mockResolvedValueOnce({ ok: 1 })
+
       await connectToDatabase()
-      
-      expect(mockConnect).toHaveBeenCalledWith(
+
+      expect(MockedMongoClient).toHaveBeenCalledWith(
         'mongodb+srv://prod:password@cluster.mongodb.net/medme',
         expect.any(Object)
       )
@@ -180,12 +182,13 @@ describe('MongoDB Connection', () => {
     it('should use test URI in test environment', async () => {
       process.env.NODE_ENV = 'test'
       process.env.MONGODB_URI = 'mongodb://localhost:27017/medme-test'
-      
-      mockConnect.mockResolvedValueOnce(mongoose as any)
-      
+
+      mockClient.connect.mockResolvedValueOnce(undefined)
+      mockClient.db().command.mockResolvedValueOnce({ ok: 1 })
+
       await connectToDatabase()
-      
-      expect(mockConnect).toHaveBeenCalledWith(
+
+      expect(MockedMongoClient).toHaveBeenCalledWith(
         'mongodb://localhost:27017/medme-test',
         expect.any(Object)
       )

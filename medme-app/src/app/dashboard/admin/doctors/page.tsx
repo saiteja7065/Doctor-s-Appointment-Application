@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LazyMotionDiv } from '@/components/ui/lazy-motion';
 
 interface DoctorApplication {
   _id: string;
@@ -32,6 +33,12 @@ interface DoctorApplication {
   specialty: string;
   licenseNumber: string;
   credentialUrl: string;
+  documentUrls?: {
+    medicalLicense?: string;
+    degreeCertificate?: string;
+    certifications?: string[];
+    additionalDocuments?: string[];
+  };
   yearsOfExperience: number;
   education: Array<{
     degree: string;
@@ -231,7 +238,7 @@ export default function AdminDoctorsPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <motion.div
+      <LazyMotionDiv
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -247,11 +254,11 @@ export default function AdminDoctorsPage() {
             {pendingCount} Pending
           </Badge>
         </div>
-      </motion.div>
+      </LazyMotionDiv>
 
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <motion.div
+        <LazyMotionDiv
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
@@ -268,9 +275,9 @@ export default function AdminDoctorsPage() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </LazyMotionDiv>
 
-        <motion.div
+        <LazyMotionDiv
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -287,9 +294,9 @@ export default function AdminDoctorsPage() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </LazyMotionDiv>
 
-        <motion.div
+        <LazyMotionDiv
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
@@ -306,9 +313,9 @@ export default function AdminDoctorsPage() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </LazyMotionDiv>
 
-        <motion.div
+        <LazyMotionDiv
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
@@ -325,11 +332,11 @@ export default function AdminDoctorsPage() {
               </p>
             </CardContent>
           </Card>
-        </motion.div>
+        </LazyMotionDiv>
       </div>
 
       {/* Filters */}
-      <motion.div
+      <LazyMotionDiv
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.5 }}
@@ -379,10 +386,10 @@ export default function AdminDoctorsPage() {
             </div>
           </CardContent>
         </Card>
-      </motion.div>
+      </LazyMotionDiv>
 
       {/* Applications List */}
-      <motion.div
+      <LazyMotionDiv
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.6 }}
@@ -455,7 +462,7 @@ export default function AdminDoctorsPage() {
             </Tabs>
           </CardContent>
         </Card>
-      </motion.div>
+      </LazyMotionDiv>
 
       {/* Application Detail Modal */}
       {selectedApplication && (
@@ -533,12 +540,36 @@ function ApplicationCard({ application, onStatusUpdate, onViewDetails }: Applica
                 variant="outline"
                 size="sm"
                 className="text-red-600 border-red-600 hover:bg-red-50"
-                onClick={() => onStatusUpdate(application._id, 'rejected')}
+                onClick={() => onStatusUpdate(application._id, 'rejected', 'Application does not meet verification requirements')}
               >
                 <XCircle className="h-4 w-4 mr-1" />
                 Reject
               </Button>
             </div>
+          )}
+
+          {application.verificationStatus === 'approved' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-orange-600 border-orange-600 hover:bg-orange-50"
+              onClick={() => onStatusUpdate(application._id, 'suspended', 'Account suspended pending investigation')}
+            >
+              <XCircle className="h-4 w-4 mr-1" />
+              Suspend
+            </Button>
+          )}
+
+          {application.verificationStatus === 'suspended' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-green-600 border-green-600 hover:bg-green-50"
+              onClick={() => onStatusUpdate(application._id, 'approved', 'Account reactivated after review')}
+            >
+              <CheckCircle className="h-4 w-4 mr-1" />
+              Reactivate
+            </Button>
           )}
         </div>
       </div>
@@ -648,15 +679,85 @@ function ApplicationDetailModal({ application, onClose, onStatusUpdate }: Applic
 
           {/* Credentials */}
           <div>
-            <h3 className="text-lg font-semibold mb-3">Credentials</h3>
-            <Button
-              variant="outline"
-              onClick={() => window.open(application.credentialUrl, '_blank')}
-              className="flex items-center space-x-2"
-            >
-              <ExternalLink className="h-4 w-4" />
-              <span>View Credential Document</span>
-            </Button>
+            <h3 className="text-lg font-semibold mb-3">Credentials & Documents</h3>
+            <div className="space-y-3">
+              {/* Primary Credential URL */}
+              <Button
+                variant="outline"
+                onClick={() => window.open(application.credentialUrl, '_blank')}
+                className="flex items-center space-x-2 w-full justify-start"
+              >
+                <ExternalLink className="h-4 w-4" />
+                <span>Primary Credential Document</span>
+              </Button>
+
+              {/* Uploaded Documents */}
+              {application.documentUrls && (
+                <div className="space-y-2">
+                  {application.documentUrls.medicalLicense && (
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(application.documentUrls!.medicalLicense!, '_blank')}
+                      className="flex items-center space-x-2 w-full justify-start"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      <span>Medical License</span>
+                    </Button>
+                  )}
+
+                  {application.documentUrls.degreeCertificate && (
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(application.documentUrls!.degreeCertificate!, '_blank')}
+                      className="flex items-center space-x-2 w-full justify-start"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      <span>Degree Certificate</span>
+                    </Button>
+                  )}
+
+                  {application.documentUrls.certifications && application.documentUrls.certifications.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium mb-2">Certification Documents:</p>
+                      {application.documentUrls.certifications.map((certUrl, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          onClick={() => window.open(certUrl, '_blank')}
+                          className="flex items-center space-x-2 w-full justify-start mb-1"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          <span>Certification {index + 1}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+
+                  {application.documentUrls.additionalDocuments && application.documentUrls.additionalDocuments.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium mb-2">Additional Documents:</p>
+                      {application.documentUrls.additionalDocuments.map((docUrl, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          onClick={() => window.open(docUrl, '_blank')}
+                          className="flex items-center space-x-2 w-full justify-start mb-1"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          <span>Document {index + 1}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!application.documentUrls && (
+                <p className="text-sm text-muted-foreground">
+                  No additional documents uploaded during application.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Action Buttons */}

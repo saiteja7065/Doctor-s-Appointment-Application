@@ -1,29 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import mongoose from 'mongoose';
 import { Patient } from '@/lib/models/Patient';
 import { User } from '@/lib/models/User';
-
-// Connect to MongoDB
-async function connectToDatabase() {
-  if (mongoose.connections[0].readyState) {
-    return true;
-  }
-
-  if (!process.env.MONGODB_URI || process.env.MONGODB_URI.includes('demo:demo')) {
-    console.warn('MongoDB URI not configured or using placeholder credentials');
-    return false;
-  }
-
-  try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
-    return true;
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    return false;
-  }
-}
+import { connectToMongoose } from '@/lib/mongodb';
 
 export async function GET(
   request: NextRequest,
@@ -44,7 +23,7 @@ export async function GET(
     }
 
     // Connect to database
-    const isConnected = await connectToDatabase();
+    const isConnected = await connectToMongoose();
 
     if (!isConnected) {
       // Return default patient data when database is not available

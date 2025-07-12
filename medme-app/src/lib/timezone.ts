@@ -269,6 +269,129 @@ export function isValidTimezone(timezone: string): boolean {
 }
 
 /**
+ * Convert appointment time from one timezone to another
+ */
+export function convertAppointmentTime(
+  appointmentTime: string, // HH:MM format
+  appointmentDate: string, // YYYY-MM-DD format
+  fromTimezone: string,
+  toTimezone: string
+): { time: string; date: string } {
+  try {
+    // Create a date object with the appointment time in the source timezone
+    const [hours, minutes] = appointmentTime.split(':').map(Number);
+    const appointmentDateTime = new Date(`${appointmentDate}T${appointmentTime}:00`);
+
+    // Convert to target timezone
+    const targetDateTime = new Date(appointmentDateTime.toLocaleString('en-US', { timeZone: toTimezone }));
+
+    // Format the result
+    const targetTime = targetDateTime.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: toTimezone
+    });
+
+    const targetDate = targetDateTime.toLocaleDateString('en-CA', {
+      timeZone: toTimezone
+    }); // en-CA gives YYYY-MM-DD format
+
+    return {
+      time: targetTime,
+      date: targetDate
+    };
+  } catch (error) {
+    console.error('Error converting appointment time:', error);
+    return {
+      time: appointmentTime,
+      date: appointmentDate
+    };
+  }
+}
+
+/**
+ * Get appointment display time for a specific timezone
+ */
+export function getAppointmentDisplayTime(
+  appointmentTimeUTC: string, // HH:MM format in UTC
+  appointmentDate: string, // YYYY-MM-DD format
+  targetTimezone: string,
+  options?: {
+    showDate?: boolean;
+    showTimezone?: boolean;
+    use12Hour?: boolean;
+  }
+): string {
+  try {
+    const { showDate = false, showTimezone = false, use12Hour = true } = options || {};
+
+    // Create UTC date object
+    const [hours, minutes] = appointmentTimeUTC.split(':').map(Number);
+    const utcDateTime = new Date(`${appointmentDate}T${appointmentTimeUTC}:00Z`);
+
+    // Format options
+    const formatOptions: Intl.DateTimeFormatOptions = {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: use12Hour,
+      timeZone: targetTimezone
+    };
+
+    if (showDate) {
+      formatOptions.year = 'numeric';
+      formatOptions.month = 'short';
+      formatOptions.day = 'numeric';
+    }
+
+    if (showTimezone) {
+      formatOptions.timeZoneName = 'short';
+    }
+
+    return new Intl.DateTimeFormat('en-US', formatOptions).format(utcDateTime);
+  } catch (error) {
+    console.error('Error formatting appointment display time:', error);
+    return appointmentTimeUTC;
+  }
+}
+
+/**
+ * Check if appointment time conflicts with existing appointments
+ */
+export function checkAppointmentConflict(
+  newAppointmentTimeUTC: string, // HH:MM format in UTC
+  newAppointmentDate: string, // YYYY-MM-DD format
+  existingAppointments: Array<{
+    appointmentTime: string; // HH:MM format in UTC
+    appointmentDate: string; // YYYY-MM-DD format
+    duration: number; // in minutes
+  }>,
+  duration: number = 30 // new appointment duration in minutes
+): boolean {
+  try {
+    const newStart = new Date(`${newAppointmentDate}T${newAppointmentTimeUTC}:00Z`);
+    const newEnd = new Date(newStart.getTime() + duration * 60000);
+
+    for (const existing of existingAppointments) {
+      if (existing.appointmentDate === newAppointmentDate) {
+        const existingStart = new Date(`${existing.appointmentDate}T${existing.appointmentTime}:00Z`);
+        const existingEnd = new Date(existingStart.getTime() + existing.duration * 60000);
+
+        // Check for overlap
+        if (newStart < existingEnd && newEnd > existingStart) {
+          return true; // Conflict found
+        }
+      }
+    }
+
+    return false; // No conflict
+  } catch (error) {
+    console.error('Error checking appointment conflict:', error);
+    return true; // Assume conflict on error for safety
+  }
+}
+
+/**
  * Get list of common timezones for selection
  */
 export function getCommonTimezones(): Array<{ value: string; label: string; offset: string }> {

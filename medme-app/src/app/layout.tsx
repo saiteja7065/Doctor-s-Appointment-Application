@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs';
 import { Toaster } from 'sonner';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 import "./globals.css";
 
 const geistSans = Geist({
@@ -39,17 +40,19 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          {children}
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              style: {
-                background: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
-                color: 'hsl(var(--foreground))',
-              },
-            }}
-          />
+          <NotificationProvider>
+            {children}
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                style: {
+                  background: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  color: 'hsl(var(--foreground))',
+                },
+              }}
+            />
+          </NotificationProvider>
         </body>
       </html>
     </ClerkProvider>

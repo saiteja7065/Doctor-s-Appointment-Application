@@ -50,7 +50,17 @@ export function RoleSelectionGuard({
       try {
         const response = await fetch('/api/users/role');
         if (response.ok) {
-          const data = await response.json();
+          // Handle successful response safely
+          let data = { role: 'patient', status: 'active' };
+          try {
+            const responseText = await response.text();
+            if (responseText) {
+              data = JSON.parse(responseText);
+            }
+          } catch (parseError) {
+            console.warn('Warning: Could not parse role response JSON, using defaults');
+          }
+
           setUserRoleData({
             role: data.role,
             status: data.status,
@@ -64,10 +74,10 @@ export function RoleSelectionGuard({
             loading: false,
           });
         } else {
-          setUserRoleData(prev => ({ 
-            ...prev, 
-            loading: false, 
-            error: 'Failed to fetch user role' 
+          setUserRoleData(prev => ({
+            ...prev,
+            loading: false,
+            error: 'Failed to fetch user role'
           }));
         }
       } catch (error) {
@@ -102,7 +112,17 @@ export function RoleSelectionGuard({
       });
 
       if (response.ok) {
-        const data = await response.json();
+        // Handle successful response safely
+        let data = { status: 'active' };
+        try {
+          const responseText = await response.text();
+          if (responseText) {
+            data = JSON.parse(responseText);
+          }
+        } catch (parseError) {
+          console.warn('Warning: Could not parse response JSON, using defaults');
+        }
+
         setUserRoleData({
           role: selectedRole,
           status: data.status,
@@ -125,11 +145,22 @@ export function RoleSelectionGuard({
             router.push('/dashboard');
         }
       } else {
-        const errorData = await response.json();
-        setUserRoleData(prev => ({ 
-          ...prev, 
-          loading: false, 
-          error: errorData.message || 'Failed to set user role' 
+        // Handle error response safely
+        let errorMessage = 'Failed to set user role';
+        try {
+          const errorText = await response.text();
+          if (errorText) {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.message || errorData.error || 'Failed to set user role';
+          }
+        } catch (parseError) {
+          errorMessage = `Server error (${response.status})`;
+        }
+
+        setUserRoleData(prev => ({
+          ...prev,
+          loading: false,
+          error: errorMessage
         }));
       }
     } catch (error) {

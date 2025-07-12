@@ -7,14 +7,25 @@ import { Patient } from '@/lib/models/Patient';
 import { User } from '@/lib/models/User';
 import { withPatientAuth } from '@/lib/auth/rbac';
 import { createVideoSession, type VonageSession } from '@/lib/vonage';
+import { sendAppointmentConfirmation, sendCreditDeductionNotification, sendLowCreditWarning } from '@/lib/email';
+import { createNotification, NotificationType, NotificationPriority } from '@/lib/notifications';
+import {
+  convertUTCToLocalTime,
+  convertLocalTimeToUTC,
+  isValidTimezone,
+  getUserTimezone
+} from '@/lib/timezone';
+import { logAppointmentEvent, logPaymentEvent } from '@/lib/audit';
+import { AuditAction } from '@/lib/models/AuditLog';
 
 interface BookingRequest {
   doctorId: string;
   appointmentDate: string; // YYYY-MM-DD
-  appointmentTime: string; // HH:MM
+  appointmentTime: string; // HH:MM in patient's local timezone
   topic: string;
   description?: string;
   consultationType: 'video' | 'phone';
+  timezone?: string; // Patient's timezone
 }
 
 /**
@@ -25,7 +36,10 @@ export async function POST(request: NextRequest) {
   return withPatientAuth(async (userContext) => {
     try {
       const body: BookingRequest = await request.json();
-      const { doctorId, appointmentDate, appointmentTime, topic, description, consultationType } = body;
+      const { doctorId, appointmentDate, appointmentTime, topic, description, consultationType, timezone } = body;
+
+      // Get patient timezone (from request or auto-detect)
+      const patientTimezone = timezone || getUserTimezone();
 
       // Validate required fields
       if (!doctorId || !appointmentDate || !appointmentTime || !topic) {
@@ -51,8 +65,19 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Validate appointment is in the future
-      const appointmentDateTime = new Date(`${appointmentDate}T${appointmentTime}:00`);
+      // Validate timezone
+      if (!isValidTimezone(patientTimezone)) {
+        return NextResponse.json(
+          { error: 'Invalid timezone' },
+          { status: 400 }
+        );
+      }
+
+      // Convert appointment time from patient's local timezone to UTC
+      const appointmentTimeUTC = convertLocalTimeToUTC(appointmentTime, patientTimezone);
+
+      // Validate appointment is in the future (using UTC time)
+      const appointmentDateTime = new Date(`${appointmentDate}T${appointmentTimeUTC}:00Z`);
       const now = new Date();
       if (appointmentDateTime <= now) {
         return NextResponse.json(
@@ -169,7 +194,10 @@ export async function POST(request: NextRequest) {
           patientEmail: user.email,
           doctorName: `${doctor.firstName} ${doctor.lastName}`,
           appointmentDate,
-          appointmentTime,
+          appointmentTime: appointmentTimeUTC, // Store in UTC
+          appointmentTimeLocal: appointmentTime, // Store original local time
+          patientTimezone, // Store patient's timezone
+          doctorTimezone: doctor.timeZone, // Store doctor's timezone
           duration: 30, // Default 30 minutes
           status: 'scheduled',
           topic: topic.trim(),
@@ -181,7 +209,148 @@ export async function POST(request: NextRequest) {
           sessionId: sessionData?.sessionId,
         });
 
-        await appointment.save();
+        const savedAppointment = await appointment.save();
+
+        // Log appointment booking event
+        await logAppointmentEvent(
+          AuditAction.APPOINTMENT_CREATE,
+          userContext.clerkId,
+          savedAppointment._id.toString(),
+          `Patient ${user.firstName} ${user.lastName} booked appointment with Dr. ${doctor.firstName} ${doctor.lastName} for ${appointmentDate} at ${appointmentTime}`,
+          request,
+          {
+            doctorId: doctor._id.toString(),
+            patientId: patient._id.toString(),
+            consultationFee,
+            consultationType,
+            topic: topic.trim(),
+            appointmentDate,
+            appointmentTime,
+            patientTimezone,
+            doctorTimezone: doctor.timeZone,
+          }
+        );
+
+        // Log credit deduction event
+        await logPaymentEvent(
+          AuditAction.CREDIT_DEDUCT,
+          userContext.clerkId,
+          savedAppointment._id.toString(),
+          consultationFee,
+          `Credits deducted for appointment booking: ${consultationFee} credits`,
+          request,
+          {
+            previousBalance: patient.creditBalance + consultationFee,
+            newBalance: patient.creditBalance,
+            appointmentId: savedAppointment._id.toString(),
+          }
+        );
+
+        // Send appointment confirmation email
+        try {
+          await sendAppointmentConfirmation({
+            patientEmail: user.email,
+            patientName: `${user.firstName} ${user.lastName}`,
+            doctorName: `${doctor.firstName} ${doctor.lastName}`,
+            specialty: doctor.specialty,
+            appointmentDate: new Date(appointmentDateTime).toLocaleDateString(),
+            appointmentTime: new Date(appointmentDateTime).toLocaleTimeString(),
+            consultationType: consultationType,
+            cost: consultationFee,
+          });
+        } catch (emailError) {
+          console.error('Failed to send appointment confirmation email:', emailError);
+          // Don't fail the appointment booking if email fails
+        }
+
+        // Send credit deduction notification email
+        try {
+          await sendCreditDeductionNotification({
+            patientEmail: user.email,
+            patientName: `${user.firstName} ${user.lastName}`,
+            doctorName: `${doctor.firstName} ${doctor.lastName}`,
+            appointmentDate: new Date(appointmentDateTime).toLocaleDateString(),
+            creditsUsed: consultationFee,
+            remainingCredits: patient.creditBalance,
+          });
+        } catch (emailError) {
+          console.error('Failed to send credit deduction email:', emailError);
+        }
+
+        // Send low credit warning if balance is low
+        if (patient.creditBalance <= 2) {
+          try {
+            await sendLowCreditWarning({
+              patientEmail: user.email,
+              patientName: `${user.firstName} ${user.lastName}`,
+              currentCredits: patient.creditBalance,
+            });
+          } catch (emailError) {
+            console.error('Failed to send low credit warning email:', emailError);
+          }
+        }
+
+        // Send in-app notifications
+        try {
+          // Patient notification
+          createNotification(
+            patient.clerkId,
+            'patient',
+            NotificationType.APPOINTMENT_BOOKED,
+            'Appointment Confirmed',
+            `Your appointment with Dr. ${doctor.firstName} ${doctor.lastName} on ${new Date(appointmentDateTime).toLocaleDateString()} has been confirmed.`,
+            {
+              priority: NotificationPriority.HIGH,
+              actionUrl: '/dashboard/patient/appointments',
+              actionLabel: 'View Appointment',
+              metadata: {
+                appointmentId: savedAppointment._id.toString(),
+                doctorName: `${doctor.firstName} ${doctor.lastName}`,
+                appointmentDate: new Date(appointmentDateTime).toLocaleDateString(),
+                creditsUsed: consultationFee,
+                remainingCredits: patient.creditBalance
+              }
+            }
+          );
+
+          // Doctor notification
+          createNotification(
+            doctor.clerkId,
+            'doctor',
+            NotificationType.APPOINTMENT_BOOKED,
+            'New Appointment Booked',
+            `${user.firstName} ${user.lastName} has booked an appointment with you on ${new Date(appointmentDateTime).toLocaleDateString()}.`,
+            {
+              priority: NotificationPriority.HIGH,
+              actionUrl: '/dashboard/doctor/appointments',
+              actionLabel: 'View Appointment',
+              metadata: {
+                appointmentId: savedAppointment._id.toString(),
+                patientName: `${user.firstName} ${user.lastName}`,
+                appointmentDate: new Date(appointmentDateTime).toLocaleDateString()
+              }
+            }
+          );
+
+          // Credit deduction notification
+          if (patient.creditBalance <= 2) {
+            createNotification(
+              patient.clerkId,
+              'patient',
+              NotificationType.LOW_CREDIT_WARNING,
+              'Low Credit Balance',
+              `You have ${patient.creditBalance} credits remaining. Consider purchasing more credits.`,
+              {
+                priority: NotificationPriority.MEDIUM,
+                actionUrl: '/dashboard/patient/subscription',
+                actionLabel: 'Buy Credits',
+                metadata: { remainingCredits: patient.creditBalance }
+              }
+            );
+          }
+        } catch (notificationError) {
+          console.error('Failed to send appointment confirmation notification:', notificationError);
+        }
 
         // Update doctor's earnings (if doctor model has earnings tracking)
         if (doctor.totalEarnings !== undefined) {
@@ -195,20 +364,20 @@ export async function POST(request: NextRequest) {
             success: true,
             message: 'Appointment booked successfully!',
             appointment: {
-              id: appointment._id,
+              id: savedAppointment._id,
               doctorId: doctor._id,
               doctorName: `${doctor.firstName} ${doctor.lastName}`,
               patientId: patient._id,
               appointmentDate,
               appointmentTime,
-              duration: appointment.duration,
-              topic: appointment.topic,
-              description: appointment.description,
-              consultationType: appointment.consultationType,
-              status: appointment.status,
-              meetingLink: appointment.meetingLink,
-              sessionId: appointment.sessionId,
-              createdAt: appointment.createdAt
+              duration: savedAppointment.duration,
+              topic: savedAppointment.topic,
+              description: savedAppointment.description,
+              consultationType: savedAppointment.consultationType,
+              status: savedAppointment.status,
+              meetingLink: savedAppointment.meetingLink,
+              sessionId: savedAppointment.sessionId,
+              createdAt: savedAppointment.createdAt
             },
             remainingCredits: patient.creditBalance,
             videoSession: sessionData

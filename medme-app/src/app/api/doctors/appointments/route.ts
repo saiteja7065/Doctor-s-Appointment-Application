@@ -2,27 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withDoctorAuth, UserContext } from '@/lib/auth/rbac';
 import { Doctor } from '@/lib/models/Doctor';
 import Appointment, { AppointmentStatus } from '@/lib/models/Appointment';
-
-// Connect to MongoDB
-async function connectToDatabase() {
-  if (mongoose.connections[0].readyState) {
-    return true;
-  }
-
-  if (!process.env.MONGODB_URI || process.env.MONGODB_URI.includes('demo:demo')) {
-    console.warn('MongoDB URI not configured or using placeholder. Database features will be disabled.');
-    return false;
-  }
-
-  try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
-    return true;
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    return false;
-  }
-}
+import { connectToMongoose } from '@/lib/mongodb';
 
 // Demo appointments data
 const DEMO_APPOINTMENTS = [
@@ -118,6 +98,19 @@ const DEMO_APPOINTMENTS = [
  */
 async function handleGET(userContext: UserContext, request: NextRequest): Promise<NextResponse> {
   try {
+    // Connect to database
+    const isConnected = await connectToMongoose();
+    if (!isConnected) {
+      // Return demo data when database is not available
+      console.log('Database not available, returning demo appointments for doctor:', userContext.clerkId);
+      return NextResponse.json({
+        appointments: DEMO_APPOINTMENTS,
+        totalCount: DEMO_APPOINTMENTS.length,
+        hasMore: false,
+        message: 'Demo mode - database not available'
+      });
+    }
+
     // Get doctor profile
     const doctor = await Doctor.findOne({ clerkId: userContext.clerkId });
     if (!doctor) {

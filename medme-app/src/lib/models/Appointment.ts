@@ -34,7 +34,10 @@ export interface IAppointment extends Document {
   patientEmail: string;
   doctorName: string;
   appointmentDate: string; // YYYY-MM-DD format
-  appointmentTime: string; // HH:MM format
+  appointmentTime: string; // HH:MM format in UTC
+  appointmentTimeLocal?: string; // HH:MM format in patient's local timezone
+  patientTimezone?: string; // Patient's timezone when booking
+  doctorTimezone?: string; // Doctor's timezone when booking
   duration: number; // in minutes
   status: AppointmentStatus;
   topic: string;
@@ -49,6 +52,7 @@ export interface IAppointment extends Document {
   followUpRequired?: boolean;
   followUpDate?: Date;
   cancelledBy?: 'patient' | 'doctor' | 'system';
+  reminderSent?: boolean;
   cancellationReason?: string;
   rescheduledFrom?: Types.ObjectId; // Reference to original appointment if rescheduled
   rating?: number; // 1-5 rating from patient
@@ -94,7 +98,19 @@ const AppointmentSchema = new Schema<IAppointment>(
     appointmentTime: {
       type: String,
       required: true,
-      match: /^\d{2}:\d{2}$/, // HH:MM format
+      match: /^\d{2}:\d{2}$/, // HH:MM format in UTC
+    },
+    appointmentTimeLocal: {
+      type: String,
+      match: /^\d{2}:\d{2}$/, // HH:MM format in patient's local timezone
+    },
+    patientTimezone: {
+      type: String,
+      trim: true,
+    },
+    doctorTimezone: {
+      type: String,
+      trim: true,
     },
     duration: {
       type: Number,
@@ -162,6 +178,10 @@ const AppointmentSchema = new Schema<IAppointment>(
     cancelledBy: {
       type: String,
       enum: ['patient', 'doctor', 'system'],
+    },
+    reminderSent: {
+      type: Boolean,
+      default: false,
     },
     cancellationReason: {
       type: String,

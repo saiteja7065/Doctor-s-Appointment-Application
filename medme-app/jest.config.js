@@ -15,6 +15,10 @@ const customJestConfig = {
     '^@/components/(.*)$': '<rootDir>/src/components/$1',
     '^@/lib/(.*)$': '<rootDir>/src/lib/$1',
     '^@/app/(.*)$': '<rootDir>/src/app/$1',
+    // Mock MongoDB modules
+    '^mongodb$': '<rootDir>/__mocks__/mongodb.js',
+    '^mongoose$': '<rootDir>/__mocks__/mongoose.js',
+    '^bson$': '<rootDir>/__mocks__/bson.js',
   },
   testMatch: [
     '<rootDir>/**/__tests__/**/*.{js,jsx,ts,tsx}',
@@ -24,10 +28,11 @@ const customJestConfig = {
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
     '<rootDir>/coverage/',
-    '<rootDir>/dist/'
+    '<rootDir>/dist/',
+    '<rootDir>/src/__tests__/utils/test-utils.tsx'
   ],
   transformIgnorePatterns: [
-    'node_modules/(?!(bson|mongodb|mongoose|@mongodb-js)/)'
+    'node_modules/(?!(bson|mongodb|mongoose|@mongodb-js|@clerk)/)'
   ],
   extensionsToTreatAsEsm: ['.ts', '.tsx'],
   globals: {

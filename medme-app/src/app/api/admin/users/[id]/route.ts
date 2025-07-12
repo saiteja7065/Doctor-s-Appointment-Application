@@ -4,6 +4,8 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { User, UserStatus, UserRole } from '@/lib/models/User';
 import { Patient } from '@/lib/models/Patient';
 import { Doctor } from '@/lib/models/Doctor';
+import { logUserManagementEvent } from '@/lib/audit';
+import { AuditAction } from '@/lib/models/AuditLog';
 
 async function handler(userContext: any, request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -78,16 +80,12 @@ async function handler(userContext: any, request: NextRequest, { params }: { par
     user.status = status;
     await user.save();
 
-    // Log the status change
-    console.log(`User ${userId} status updated from ${oldStatus} to ${status} by admin ${userContext.clerkId}`);
-    if (reason) {
-      console.log(`Reason: ${reason}`);
-    }
-
     // Handle role-specific status updates
+    let doctorStatusUpdate = null;
     if (user.role === UserRole.DOCTOR) {
       const doctor = await Doctor.findOne({ userId: user._id });
       if (doctor) {
+        const previousDoctorStatus = doctor.verificationStatus;
         // Update doctor verification status based on user status
         switch (status) {
           case UserStatus.SUSPENDED:
@@ -104,7 +102,41 @@ async function handler(userContext: any, request: NextRequest, { params }: { par
             break;
         }
         await doctor.save();
+        doctorStatusUpdate = {
+          previousStatus: previousDoctorStatus,
+          newStatus: doctor.verificationStatus,
+        };
       }
+    }
+
+    // Log the admin action for audit trail
+    const auditAction = status === UserStatus.SUSPENDED ? AuditAction.ADMIN_USER_SUSPEND :
+                       status === UserStatus.ACTIVE ? AuditAction.ADMIN_USER_ACTIVATE :
+                       AuditAction.USER_STATUS_CHANGE;
+
+    await logUserManagementEvent(
+      auditAction,
+      userContext.clerkId,
+      userId,
+      `Admin changed user status from ${oldStatus} to ${status} for ${user.firstName} ${user.lastName} (${user.email})${reason ? ` - Reason: ${reason}` : ''}`,
+      request,
+      {
+        status: oldStatus,
+        role: user.role,
+        doctorVerificationStatus: doctorStatusUpdate?.previousStatus,
+      },
+      {
+        status: status,
+        role: user.role,
+        doctorVerificationStatus: doctorStatusUpdate?.newStatus,
+        reason: reason || null,
+      }
+    );
+
+    // Log the status change (keeping existing console log for backward compatibility)
+    console.log(`User ${userId} status updated from ${oldStatus} to ${status} by admin ${userContext.clerkId}`);
+    if (reason) {
+      console.log(`Reason: ${reason}`);
     }
 
     // TODO: Send notification email to user about status change

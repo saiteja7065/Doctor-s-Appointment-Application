@@ -244,11 +244,7 @@ export default function DoctorAvailabilityPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <div className="animate-fade-in-up">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Availability Management</h1>
@@ -280,14 +276,10 @@ export default function DoctorAvailabilityPage() {
             </Button>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Quick Templates */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
+      <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -316,14 +308,10 @@ export default function DoctorAvailabilityPage() {
             </div>
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
 
       {/* Weekly Schedule */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
+      <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -468,7 +456,7 @@ export default function DoctorAvailabilityPage() {
             })}
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
     </div>
   );
 }

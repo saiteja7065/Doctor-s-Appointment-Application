@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { Patient } from '@/lib/models/Patient';
 import Appointment from '@/lib/models/Appointment';
 import { withPatientAuth } from '@/lib/auth/rbac';
+import { creditPackages, subscriptionPlans, formatPrice } from '@/lib/stripe';
 
 interface SubscriptionData {
   creditBalance: number;
@@ -13,6 +14,8 @@ interface SubscriptionData {
   totalAppointments: number;
   totalSpent: number;
   transactions: Transaction[];
+  availablePackages?: any[];
+  availablePlans?: any[];
 }
 
 interface Transaction {
@@ -136,7 +139,16 @@ export async function GET(request: NextRequest) {
         subscriptionEndDate: patient.subscriptionEndDate?.toISOString(),
         totalAppointments: patient.totalAppointments,
         totalSpent: patient.totalSpent,
-        transactions
+        transactions,
+        // Add available packages and plans for frontend
+        availablePackages: creditPackages.map(pkg => ({
+          ...pkg,
+          formattedPrice: formatPrice(pkg.price)
+        })),
+        availablePlans: subscriptionPlans.map(plan => ({
+          ...plan,
+          formattedPrice: formatPrice(plan.price)
+        })),
       };
 
       return NextResponse.json(subscriptionData);
@@ -199,20 +211,32 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // In a real implementation, you would:
-        // 1. Process payment with Stripe
-        // 2. Verify payment success
-        // 3. Add credits to patient account
+        // Find the appropriate credit package
+        const packageId = body.packageId;
+        if (!packageId) {
+          return NextResponse.json(
+            { error: 'Missing packageId for credit purchase' },
+            { status: 400 }
+          );
+        }
 
-        // For demo purposes, we'll just add the credits
-        patient.creditBalance += credits;
-        await patient.save();
+        const creditPackage = creditPackages.find(pkg => pkg.id === packageId);
+        if (!creditPackage) {
+          return NextResponse.json(
+            { error: 'Invalid credit package' },
+            { status: 400 }
+          );
+        }
 
+        // Return checkout URL for Stripe payment
         return NextResponse.json({
           success: true,
-          message: 'Credits purchased successfully',
-          creditsAdded: credits,
-          newBalance: patient.creditBalance
+          requiresPayment: true,
+          checkoutUrl: `/api/payments/checkout`,
+          packageId: packageId,
+          credits: creditPackage.credits,
+          price: creditPackage.price,
+          message: 'Redirect to payment processing'
         });
 
       } else if (action === 'upgrade_plan') {
@@ -223,42 +247,24 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Validate plan
-        const validPlans = ['free', 'basic', 'premium', 'unlimited'];
-        if (!validPlans.includes(planId)) {
+        // Find the subscription plan
+        const plan = subscriptionPlans.find(p => p.id === planId || p.id === `plan_${planId}`);
+        if (!plan) {
           return NextResponse.json(
-            { error: 'Invalid plan ID' },
+            { error: 'Invalid subscription plan' },
             { status: 400 }
           );
         }
 
-        // In a real implementation, you would:
-        // 1. Process payment with Stripe
-        // 2. Set up recurring subscription
-        // 3. Update patient subscription
-
-        // For demo purposes, we'll just update the plan
-        patient.subscriptionPlan = planId;
-        patient.subscriptionStatus = planId === 'free' ? 'inactive' : 'active';
-        patient.subscriptionStartDate = new Date();
-        
-        // Add plan credits
-        const planCredits = {
-          free: 0,
-          basic: 10,
-          premium: 30,
-          unlimited: 999
-        };
-        
-        patient.creditBalance += planCredits[planId as keyof typeof planCredits];
-        await patient.save();
-
+        // Return checkout URL for Stripe subscription
         return NextResponse.json({
           success: true,
-          message: 'Subscription upgraded successfully',
-          newPlan: planId,
-          creditsAdded: planCredits[planId as keyof typeof planCredits],
-          newBalance: patient.creditBalance
+          requiresPayment: true,
+          checkoutUrl: `/api/payments/checkout`,
+          planId: plan.id,
+          credits: plan.credits,
+          price: plan.price,
+          message: 'Redirect to subscription payment processing'
         });
 
       } else {

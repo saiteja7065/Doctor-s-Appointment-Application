@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
+import {
   Video,
   VideoOff,
   Mic,
@@ -19,10 +19,15 @@ import {
   Clock,
   AlertCircle,
   Loader2,
-  ArrowLeft
+  ArrowLeft,
+  CheckCircle,
+  Monitor,
+  Wifi,
+  Camera
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import VonageVideoSession from '@/components/video/VonageVideoSession';
 
 interface ConsultationData {
   token: string;
@@ -51,6 +56,7 @@ export default function VideoConsultationPage() {
   const [connectionCount, setConnectionCount] = useState(0);
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [useEnhancedVideo, setUseEnhancedVideo] = useState(true);
 
   const videoRef = useRef<HTMLDivElement>(null);
   const sessionRef = useRef<any>(null);
@@ -140,6 +146,10 @@ export default function VideoConsultationPage() {
     setIsAudioEnabled(!isAudioEnabled);
     // In real implementation, this would control the audio stream
     toast.info(isAudioEnabled ? 'Microphone muted' : 'Microphone unmuted');
+  };
+
+  const handleEndConsultation = () => {
+    endConsultation();
   };
 
   const endConsultation = async () => {
@@ -330,12 +340,20 @@ export default function VideoConsultationPage() {
                       <Video className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
                       <h3 className="text-lg font-semibold mb-2">Ready to Connect</h3>
                       <p className="text-muted-foreground mb-4">
-                        Click the button below to join the consultation
+                        We recommend running a system check before joining your consultation
                       </p>
-                      <Button onClick={() => initializeVideoSession(consultationData)}>
-                        <Video className="h-4 w-4 mr-2" />
-                        Join Video Call
-                      </Button>
+                      <div className="space-y-3">
+                        <Link href={`/consultation/${sessionId}/check`}>
+                          <Button variant="outline" className="w-full">
+                            <Monitor className="h-4 w-4 mr-2" />
+                            Run System Check
+                          </Button>
+                        </Link>
+                        <Button onClick={() => initializeVideoSession(consultationData)} className="w-full">
+                          <Video className="h-4 w-4 mr-2" />
+                          Join Video Call
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -350,6 +368,21 @@ export default function VideoConsultationPage() {
                 <CardTitle>Consultation Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div>
+                  <h4 className="font-medium mb-2">Video Settings</h4>
+                  <div className="space-y-2">
+                    <Button
+                      variant={useEnhancedVideo ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setUseEnhancedVideo(!useEnhancedVideo)}
+                      className="w-full"
+                    >
+                      <Monitor className="h-4 w-4 mr-2" />
+                      {useEnhancedVideo ? 'Enhanced Video' : 'Basic Video'}
+                    </Button>
+                  </div>
+                </div>
+
                 <div>
                   <h4 className="font-medium mb-2">Participants</h4>
                   <div className="space-y-2">

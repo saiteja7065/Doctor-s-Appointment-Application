@@ -49,6 +49,12 @@ export interface IDoctor extends Document {
   specialty: MedicalSpecialty;
   licenseNumber: string;
   credentialUrl: string; // URL to verify credentials
+  documentUrls?: {
+    medicalLicense?: string;
+    degreeCertificate?: string;
+    certifications?: string[];
+    additionalDocuments?: string[];
+  };
   yearsOfExperience: number;
   education: {
     degree: string;
@@ -117,6 +123,24 @@ const DoctorSchema = new Schema<IDoctor>(
       type: String,
       required: true,
       trim: true,
+    },
+    documentUrls: {
+      medicalLicense: {
+        type: String,
+        trim: true,
+      },
+      degreeCertificate: {
+        type: String,
+        trim: true,
+      },
+      certifications: [{
+        type: String,
+        trim: true,
+      }],
+      additionalDocuments: [{
+        type: String,
+        trim: true,
+      }],
     },
     yearsOfExperience: {
       type: Number,

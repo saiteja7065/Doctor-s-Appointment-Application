@@ -79,5 +79,5 @@ export {
   Mail,
   Lock,
   Unlock,
-  Refresh
+  RefreshCw as Refresh
 } from 'lucide-react';

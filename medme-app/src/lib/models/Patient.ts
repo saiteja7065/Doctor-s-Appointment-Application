@@ -9,6 +9,7 @@ export interface IPatient extends Document {
   subscriptionStatus: 'active' | 'inactive' | 'cancelled' | 'expired';
   subscriptionStartDate?: Date;
   subscriptionEndDate?: Date;
+  stripeCustomerId?: string;
   totalAppointments: number;
   totalSpent: number;
   emergencyContact?: {
@@ -69,6 +70,10 @@ const PatientSchema = new Schema<IPatient>(
     },
     subscriptionEndDate: {
       type: Date,
+    },
+    stripeCustomerId: {
+      type: String,
+      sparse: true, // Allow multiple null values but unique non-null values
     },
     totalAppointments: {
       type: Number,

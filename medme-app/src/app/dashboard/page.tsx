@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Stethoscope, User, Calendar, CreditCard } from 'lucide-react';
+import { LazyMotionDiv } from '@/components/ui/lazy-motion';
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
@@ -85,7 +86,7 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <motion.div
+        <LazyMotionDiv
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -97,11 +98,11 @@ export default function DashboardPage() {
           <p className="text-xl text-muted-foreground">
             Welcome to your MedMe dashboard
           </p>
-        </motion.div>
+        </LazyMotionDiv>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <motion.div
+          <LazyMotionDiv
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -120,9 +121,9 @@ export default function DashboardPage() {
                 </p>
               </CardContent>
             </Card>
-          </motion.div>
+          </LazyMotionDiv>
 
-          <motion.div
+          <LazyMotionDiv
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -141,9 +142,9 @@ export default function DashboardPage() {
                 </p>
               </CardContent>
             </Card>
-          </motion.div>
+          </LazyMotionDiv>
 
-          <motion.div
+          <LazyMotionDiv
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
@@ -162,9 +163,9 @@ export default function DashboardPage() {
                 </p>
               </CardContent>
             </Card>
-          </motion.div>
+          </LazyMotionDiv>
 
-          <motion.div
+          <LazyMotionDiv
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
@@ -183,11 +184,11 @@ export default function DashboardPage() {
                 </p>
               </CardContent>
             </Card>
-          </motion.div>
+          </LazyMotionDiv>
         </div>
 
         {/* Quick Actions */}
-        <motion.div
+        <LazyMotionDiv
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
@@ -214,7 +215,7 @@ export default function DashboardPage() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </LazyMotionDiv>
       </main>
     </div>
   );

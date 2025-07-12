@@ -21,7 +21,7 @@ export default function OnboardingPage() {
     setIsLoading(true);
     try {
       // Create user profile with selected role
-      const response = await fetch('/api/users/create-profile', {
+      const response = await fetch('/api/users/create-profile-v2', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -36,10 +36,22 @@ export default function OnboardingPage() {
       });
 
       console.log('📡 Onboarding: Response status:', response.status);
+      console.log('📡 Onboarding: Response headers:', response.headers);
 
       if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Onboarding: Profile created successfully:', data);
+        // Check if response has content
+        const text = await response.text();
+        console.log('📡 Onboarding: Raw response:', text);
+
+        if (!text) {
+          console.log('⚠️ Onboarding: Empty response received');
+          // Handle empty response as success
+          const data = { message: 'Profile created successfully' };
+          console.log('✅ Onboarding: Profile created successfully (empty response):', data);
+        } else {
+          const data = JSON.parse(text);
+          console.log('✅ Onboarding: Profile created successfully:', data);
+        }
 
         // Redirect based on role
         if (selectedRole === UserRole.PATIENT) {
@@ -53,8 +65,22 @@ export default function OnboardingPage() {
           router.push('/dashboard/admin');
         }
       } else {
-        const errorData = await response.json();
-        console.error('❌ Onboarding: Failed to create profile:', errorData);
+        // Handle error response safely
+        let errorMessage = 'Unknown error';
+        try {
+          const errorText = await response.text();
+          console.error('❌ Onboarding: Error response text:', errorText);
+
+          if (errorText) {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.message || errorData.error || 'Unknown error';
+          }
+        } catch (parseError) {
+          console.error('❌ Onboarding: Failed to parse error response:', parseError);
+          errorMessage = `Server error (${response.status})`;
+        }
+
+        console.error('❌ Onboarding: Failed to create profile:', errorMessage);
 
         // Even if there's an error, try to redirect to prevent user from being stuck
         if (selectedRole === UserRole.PATIENT) {

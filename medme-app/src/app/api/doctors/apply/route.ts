@@ -4,27 +4,9 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { User } from '@/lib/models/User';
 import { Doctor } from '@/lib/models/Doctor';
 import { DoctorVerificationStatus } from '@/lib/types/user';
-
-// Connect to MongoDB
-async function connectToDatabase() {
-  if (mongoose.connections[0].readyState) {
-    return true;
-  }
-
-  if (!process.env.MONGODB_URI || process.env.MONGODB_URI.includes('demo:demo')) {
-    console.warn('MongoDB URI not configured or using placeholder. Database features will be disabled.');
-    return false;
-  }
-
-  try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
-    return true;
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    return false;
-  }
-}
+import { logUserManagementEvent } from '@/lib/audit';
+import { AuditAction } from '@/lib/models/AuditLog';
+import mongoose from 'mongoose';
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,6 +25,7 @@ export async function POST(request: NextRequest) {
       specialty,
       licenseNumber,
       credentialUrl,
+      documentUrls,
       yearsOfExperience,
       education,
       certifications,
@@ -131,6 +114,7 @@ export async function POST(request: NextRequest) {
       specialty,
       licenseNumber,
       credentialUrl,
+      documentUrls: documentUrls || {},
       yearsOfExperience,
       education: education || [],
       certifications: certifications || [],
@@ -148,6 +132,23 @@ export async function POST(request: NextRequest) {
     });
 
     await doctorApplication.save();
+
+    // Log the application submission for audit
+    await logUserManagementEvent(
+      AuditAction.DOCTOR_APPLICATION_SUBMIT,
+      clerkId,
+      user._id.toString(),
+      `Doctor application submitted by ${firstName} ${lastName} (${specialty})`,
+      request,
+      undefined,
+      {
+        applicationId: doctorApplication._id.toString(),
+        specialty,
+        licenseNumber,
+        yearsOfExperience,
+        hasDocuments: !!(documentUrls?.medicalLicense || documentUrls?.degreeCertificate),
+      }
+    );
 
     // Log the application submission
     console.log(`Doctor application submitted for user ${clerkId} (${firstName} ${lastName})`);

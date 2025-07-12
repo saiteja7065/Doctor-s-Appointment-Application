@@ -69,9 +69,21 @@ export default function DoctorOnboardingPage() {
   ]);
 
   const [uploadedFiles, setUploadedFiles] = useState<{
-    license?: File;
-    degree?: File;
-    certifications?: File[];
+    license?: {
+      file: File;
+      url: string;
+      uploaded: boolean;
+    };
+    degree?: {
+      file: File;
+      url: string;
+      uploaded: boolean;
+    };
+    certifications?: {
+      file: File;
+      url: string;
+      uploaded: boolean;
+    };
   }>({});
 
   const handleInputChange = (field: string, value: string) => {
@@ -122,11 +134,53 @@ export default function DoctorOnboardingPage() {
     }));
   };
 
-  const handleFileUpload = (type: string, file: File) => {
-    setUploadedFiles(prev => ({
-      ...prev,
-      [type]: file
-    }));
+  const handleFileUpload = async (type: string, file: File) => {
+    try {
+      setIsLoading(true);
+
+      // Create form data for file upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', type);
+
+      // Upload file to server
+      const response = await fetch('/api/upload/credentials', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        toast.error(result.error || 'Failed to upload file');
+        return;
+      }
+
+      // Store uploaded file info
+      setUploadedFiles(prev => ({
+        ...prev,
+        [type]: {
+          file,
+          url: result.url,
+          uploaded: true,
+        }
+      }));
+
+      // Update credential URL in form data if it's a license
+      if (type === 'license') {
+        setFormData(prev => ({
+          ...prev,
+          credentialUrl: result.url
+        }));
+      }
+
+      toast.success('File uploaded successfully');
+    } catch (error) {
+      console.error('File upload error:', error);
+      toast.error('Failed to upload file. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const validateStep = (step: number): boolean => {
@@ -162,12 +216,20 @@ export default function DoctorOnboardingPage() {
 
     setIsLoading(true);
     try {
+      // Prepare document URLs from uploaded files
+      const documentUrls = {
+        medicalLicense: uploadedFiles.license?.url,
+        degreeCertificate: uploadedFiles.degree?.url,
+        certifications: uploadedFiles.certifications?.url ? [uploadedFiles.certifications.url] : [],
+      };
+
       const applicationData = {
         clerkId: user?.id,
         email: user?.emailAddresses[0]?.emailAddress,
         firstName: user?.firstName || '',
         lastName: user?.lastName || '',
         ...formData,
+        documentUrls,
         yearsOfExperience: parseInt(formData.yearsOfExperience),
         consultationFee: parseInt(formData.consultationFee),
         education: education.filter(edu => edu.degree && edu.institution),
@@ -552,7 +614,8 @@ export default function DoctorOnboardingPage() {
                             />
                             {uploadedFiles.license && (
                               <p className="text-xs text-green-600">
-                                ✓ {uploadedFiles.license.name}
+                                ✓ {uploadedFiles.license.file.name}
+                                {uploadedFiles.license.uploaded && ' (Uploaded)'}
                               </p>
                             )}
                           </div>
@@ -573,7 +636,8 @@ export default function DoctorOnboardingPage() {
                             />
                             {uploadedFiles.degree && (
                               <p className="text-xs text-green-600">
-                                ✓ {uploadedFiles.degree.name}
+                                ✓ {uploadedFiles.degree.file.name}
+                                {uploadedFiles.degree.uploaded && ' (Uploaded)'}
                               </p>
                             )}
                           </div>
@@ -595,7 +659,8 @@ export default function DoctorOnboardingPage() {
                             />
                             {uploadedFiles.certifications && (
                               <p className="text-xs text-green-600">
-                                ✓ Files uploaded
+                                ✓ {uploadedFiles.certifications.file.name}
+                                {uploadedFiles.certifications.uploaded && ' (Uploaded)'}
                               </p>
                             )}
                           </div>

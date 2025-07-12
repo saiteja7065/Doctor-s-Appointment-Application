@@ -58,6 +58,12 @@ const navigationItems = [
     description: 'System-wide appointment monitoring'
   },
   {
+    name: 'Audit Logs',
+    href: '/dashboard/admin/audit-logs',
+    icon: Shield,
+    description: 'Security and activity monitoring'
+  },
+  {
     name: 'Analytics',
     href: '/dashboard/admin/analytics',
     icon: BarChart3,

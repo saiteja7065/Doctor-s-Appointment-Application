@@ -43,6 +43,8 @@ export default function SubscriptionPage() {
   const [currentPlan, setCurrentPlan] = useState('free');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [availablePackages, setAvailablePackages] = useState<any[]>([]);
+  const [availablePlans, setAvailablePlans] = useState<any[]>([]);
 
   const plans: SubscriptionPlan[] = [
     {
@@ -120,6 +122,14 @@ export default function SubscriptionPage() {
           setCurrentCredits(data.creditBalance);
           setCurrentPlan(data.subscriptionPlan);
           setTransactions(data.transactions);
+
+          // Set available packages and plans from API
+          if (data.availablePackages) {
+            setAvailablePackages(data.availablePackages);
+          }
+          if (data.availablePlans) {
+            setAvailablePlans(data.availablePlans);
+          }
         } else {
           // Fallback to demo data if API fails
           const mockTransactions: Transaction[] = [
@@ -166,33 +176,29 @@ export default function SubscriptionPage() {
     }
   };
 
-  const handlePurchaseCredits = async (credits: number) => {
+  const handlePurchaseCredits = async (packageId: string) => {
     try {
-      const response = await fetch('/api/patients/subscription', {
+      // Create Stripe checkout session
+      const checkoutResponse = await fetch('/api/payments/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'purchase_credits',
-          credits,
-          paymentMethod: 'demo' // In real implementation, this would be from Stripe
+          type: 'credits',
+          packageId,
+          email: user?.emailAddresses[0]?.emailAddress,
+          name: user?.fullName,
         }),
       });
 
-      const data = await response.json();
+      const checkoutData = await checkoutResponse.json();
 
-      if (response.ok) {
-        setCurrentCredits(data.newBalance);
-        // Refresh transaction history
-        const subscriptionResponse = await fetch('/api/patients/subscription');
-        if (subscriptionResponse.ok) {
-          const subscriptionData = await subscriptionResponse.json();
-          setTransactions(subscriptionData.transactions);
-        }
-        alert(`Successfully purchased ${credits} credits!`);
+      if (checkoutResponse.ok && checkoutData.url) {
+        // Redirect to Stripe checkout
+        window.location.href = checkoutData.url;
       } else {
-        throw new Error(data.error || 'Failed to purchase credits');
+        throw new Error(checkoutData.error || 'Failed to create checkout session');
       }
     } catch (error) {
       console.error('Error purchasing credits:', error);
@@ -202,32 +208,33 @@ export default function SubscriptionPage() {
 
   const handleUpgradePlan = async (planId: string) => {
     try {
-      const response = await fetch('/api/patients/subscription', {
+      // Skip if it's the free plan
+      if (planId === 'free') {
+        alert('You are already on the free plan.');
+        return;
+      }
+
+      // Create Stripe checkout session for subscription
+      const checkoutResponse = await fetch('/api/payments/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'upgrade_plan',
-          planId,
-          paymentMethod: 'demo' // In real implementation, this would be from Stripe
+          type: 'subscription',
+          planId: planId.startsWith('plan_') ? planId : `plan_${planId}`,
+          email: user?.emailAddresses[0]?.emailAddress,
+          name: user?.fullName,
         }),
       });
 
-      const data = await response.json();
+      const checkoutData = await checkoutResponse.json();
 
-      if (response.ok) {
-        setCurrentPlan(data.newPlan);
-        setCurrentCredits(data.newBalance);
-        // Refresh transaction history
-        const subscriptionResponse = await fetch('/api/patients/subscription');
-        if (subscriptionResponse.ok) {
-          const subscriptionData = await subscriptionResponse.json();
-          setTransactions(subscriptionData.transactions);
-        }
-        alert(`Successfully upgraded to ${planId} plan!`);
+      if (checkoutResponse.ok && checkoutData.url) {
+        // Redirect to Stripe checkout
+        window.location.href = checkoutData.url;
       } else {
-        throw new Error(data.error || 'Failed to upgrade plan');
+        throw new Error(checkoutData.error || 'Failed to create checkout session');
       }
     } catch (error) {
       console.error('Error upgrading plan:', error);
@@ -308,16 +315,26 @@ export default function SubscriptionPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[5, 10, 20, 50].map((credits) => (
+              {(availablePackages.length > 0 ? availablePackages : [
+                { id: 'credits_5', credits: 5, formattedPrice: '$10.00', popular: false },
+                { id: 'credits_10', credits: 10, formattedPrice: '$18.00', popular: true },
+                { id: 'credits_20', credits: 20, formattedPrice: '$32.00', popular: false },
+                { id: 'credits_50', credits: 50, formattedPrice: '$75.00', popular: false }
+              ]).map((pkg) => (
                 <Button
-                  key={credits}
-                  variant="outline"
-                  className="h-auto p-4 flex flex-col items-center space-y-2"
-                  onClick={() => handlePurchaseCredits(credits)}
+                  key={pkg.id}
+                  variant={pkg.popular ? "default" : "outline"}
+                  className="h-auto p-4 flex flex-col items-center space-y-2 relative"
+                  onClick={() => handlePurchaseCredits(pkg.id)}
                 >
-                  <div className="text-2xl font-bold text-primary">{credits}</div>
+                  {pkg.popular && (
+                    <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
+                      Popular
+                    </div>
+                  )}
+                  <div className="text-2xl font-bold text-primary">{pkg.credits}</div>
                   <div className="text-xs text-muted-foreground">credits</div>
-                  <div className="text-sm font-medium">${(credits * 2.5).toFixed(0)}</div>
+                  <div className="text-sm font-medium">{pkg.formattedPrice}</div>
                 </Button>
               ))}
             </div>
@@ -339,7 +356,15 @@ export default function SubscriptionPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {plans.map((plan, index) => (
+          {(availablePlans.length > 0 ? [
+            { id: 'free', name: 'Free Plan', price: 0, credits: 2, features: ['2 consultation credits', 'Basic video calls', 'Standard support'], current: currentPlan === 'free' },
+            ...availablePlans.map(plan => ({
+              ...plan,
+              id: plan.id.replace('plan_', ''),
+              price: parseFloat(plan.formattedPrice.replace('$', '')),
+              current: currentPlan === plan.id.replace('plan_', '')
+            }))
+          ] : plans).map((plan, index) => (
             <motion.div
               key={plan.id}
               initial={{ opacity: 0, y: 20 }}
