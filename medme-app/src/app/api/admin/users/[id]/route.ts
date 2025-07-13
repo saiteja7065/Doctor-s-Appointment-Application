@@ -4,8 +4,10 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { User, UserStatus, UserRole } from '@/lib/models/User';
 import { Patient } from '@/lib/models/Patient';
 import { Doctor } from '@/lib/models/Doctor';
+import Appointment from '@/lib/models/Appointment';
+import { AuditLog, AuditAction } from '@/lib/models/AuditLog';
 import { logUserManagementEvent } from '@/lib/audit';
-import { AuditAction } from '@/lib/models/AuditLog';
+import { createNotification, NotificationType, NotificationPriority } from '@/lib/notifications';
 
 async function handler(userContext: any, request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -139,13 +141,69 @@ async function handler(userContext: any, request: NextRequest, { params }: { par
       console.log(`Reason: ${reason}`);
     }
 
-    // TODO: Send notification email to user about status change
-    // This would be implemented with the notification system
+    // Send notification email to user about status change
+    try {
+      await createNotification(
+        user.clerkId,
+        user.role,
+        NotificationType.ACCOUNT_STATUS_CHANGED,
+        'Account Status Updated',
+        `Your account status has been changed to: ${status}${reason ? `. Reason: ${reason}` : ''}`,
+        {
+          priority: status === 'suspended' ? NotificationPriority.URGENT : NotificationPriority.HIGH,
+          actionUrl: '/dashboard',
+          metadata: {
+            previousStatus: oldStatus,
+            newStatus: status,
+            reason: reason || '',
+            updatedBy: 'admin'
+          }
+        }
+      );
+    } catch (notificationError) {
+      console.warn('Failed to send status change notification:', notificationError);
+    }
 
-    // TODO: If suspending, also handle:
-    // - Cancel active appointments
-    // - Disable access to platform features
-    // - Log security event
+    // If suspending, handle additional security measures
+    if (status === 'suspended') {
+      try {
+        // Cancel active appointments
+        await Appointment.updateMany(
+          {
+            $or: [
+              { patientClerkId: user.clerkId },
+              { doctorClerkId: user.clerkId }
+            ],
+            status: { $in: ['scheduled', 'confirmed'] }
+          },
+          {
+            status: 'cancelled',
+            cancelledBy: 'system',
+            cancellationReason: 'Account suspended by admin'
+          }
+        );
+
+        // Log security event
+        await AuditLog.create({
+          userId: user._id,
+          userRole: user.role,
+          action: 'account_suspended',
+          resource: 'user_account',
+          resourceId: user._id.toString(),
+          details: {
+            reason: reason || 'Administrative action',
+            suspendedBy: userId,
+            previousStatus: oldStatus
+          },
+          ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+          userAgent: request.headers.get('user-agent') || 'unknown'
+        });
+
+        console.log(`Security event logged: User ${user.clerkId} suspended by admin ${userId}`);
+      } catch (securityError) {
+        console.warn('Failed to complete security measures for suspension:', securityError);
+      }
+    }
 
     return NextResponse.json(
       {

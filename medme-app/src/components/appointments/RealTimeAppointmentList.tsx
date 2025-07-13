@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+// Removed framer-motion for better performance - using CSS animations
 import { useRealTimeAppointments, useStatusChangeDetector } from '@/hooks/useRealTimeData';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { withRealTimeData, WithRealTimeDataProps } from '@/components/hoc/withRealTimeData';
@@ -202,27 +202,23 @@ function AppointmentListComponent({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <AnimatePresence mode="popLayout">
-        {displayedAppointments.map((appointment) => {
+      {/* Replaced AnimatePresence with CSS animations */}
+      <div className="space-y-4">
+        {displayedAppointments.map((appointment, index) => {
           const statusConfig = getStatusConfig(appointment.status);
           const StatusIcon = statusConfig.icon;
           const isHighlighted = highlightedItems.has(appointment._id);
 
           return (
-            <motion.div
+            <div
               key={appointment._id}
-              layout
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ 
-                opacity: 1, 
-                y: 0,
-                scale: isHighlighted ? 1.02 : 1,
-                boxShadow: isHighlighted 
-                  ? '0 4px 20px rgba(59, 130, 246, 0.3)' 
+              className={`animate-fade-in-up ${isHighlighted ? 'scale-105 shadow-lg' : 'shadow-sm'} transition-all duration-300`}
+              style={{
+                animationDelay: `${index * 100}ms`,
+                boxShadow: isHighlighted
+                  ? '0 4px 20px rgba(59, 130, 246, 0.3)'
                   : '0 1px 3px rgba(0, 0, 0, 0.1)'
               }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
               className={`${isHighlighted ? 'ring-2 ring-blue-400' : ''}`}
             >
               <Card 
@@ -307,10 +303,10 @@ function AppointmentListComponent({
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
           );
         })}
-      </AnimatePresence>
+      </div>
     </div>
   );
 }

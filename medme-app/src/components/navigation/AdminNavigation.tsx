@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { useUser, UserButton } from '@clerk/nextjs';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { 
+// Removed framer-motion for better performance - using CSS animations
+import {
   Stethoscope, 
   Shield, 
   Users, 
@@ -107,14 +107,9 @@ export default function AdminNavigation() {
       </div>
 
       {/* Sidebar */}
-      <motion.aside
-        initial={{ x: -300 }}
-        animate={{ 
-          x: isMobileMenuOpen ? 0 : -300 
-        }}
-        transition={{ duration: 0.3 }}
+      <aside
         className={`
-          fixed top-0 left-0 z-40 w-64 h-screen
+          fixed top-0 left-0 z-40 w-64 h-screen transition-transform duration-300
           lg:translate-x-0 lg:static lg:z-auto
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
@@ -232,7 +227,7 @@ export default function AdminNavigation() {
             </div>
           </div>
         </div>
-      </motion.aside>
+      </aside>
 
       {/* Mobile overlay */}
       {isMobileMenuOpen && (

@@ -184,44 +184,34 @@ jest.mock('@vonage/server-sdk', () => ({
   })),
 }))
 
-// Mock framer-motion
-jest.mock('framer-motion', () => ({
-  motion: {
-    div: 'div',
-    span: 'span',
-    button: 'button',
-    form: 'form',
-    input: 'input',
-    textarea: 'textarea',
-    select: 'select',
-    option: 'option',
-    label: 'label',
-    h1: 'h1',
-    h2: 'h2',
-    h3: 'h3',
-    h4: 'h4',
-    h5: 'h5',
-    h6: 'h6',
-    p: 'p',
-    a: 'a',
-    img: 'img',
-    ul: 'ul',
-    li: 'li',
-    nav: 'nav',
-    section: 'section',
-    article: 'article',
-    aside: 'aside',
-    header: 'header',
-    footer: 'footer',
-    main: 'main',
-  },
-  AnimatePresence: ({ children }) => children,
-  useAnimation: () => ({
-    start: jest.fn(),
-    stop: jest.fn(),
-    set: jest.fn(),
-  }),
-}))
+// Framer-motion removed - using CSS animations for better performance
+
+// Global test cleanup to prevent hanging
+beforeEach(() => {
+  jest.clearAllTimers()
+})
+
+afterEach(() => {
+  jest.clearAllTimers()
+  jest.clearAllMocks()
+})
+
+// Global cleanup for MongoDB connections
+afterAll(async () => {
+  // Close any open MongoDB connections
+  const mongoose = require('mongoose')
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.connection.close()
+  }
+
+  // Clear all timers
+  jest.clearAllTimers()
+
+  // Force garbage collection if available
+  if (global.gc) {
+    global.gc()
+  }
+})
 
 // Global test utilities
 global.ResizeObserver = jest.fn().mockImplementation(() => ({

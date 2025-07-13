@@ -17,12 +17,13 @@ export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
 export { Avatar, AvatarFallback, AvatarImage } from './avatar';
 export { Separator } from './separator';
 
-// Optimized motion components
-export { 
-  LazyMotionDiv, 
-  LazyMotionSection, 
-  LazyMotionButton, 
-  LazyAnimatePresence,
-  useLazyAnimation,
-  cssAnimations 
-} from './lazy-motion';
+// CSS animation utilities
+export const cssAnimations = {
+  fadeInUp: 'animate-fade-in-up',
+  fadeIn: 'animate-fade-in',
+  slideInLeft: 'animate-slide-in-left',
+  slideInRight: 'animate-slide-in-right',
+  scaleIn: 'animate-scale-in',
+  slideDown: 'animate-slide-down',
+  pulse: 'animate-pulse-medical'
+};

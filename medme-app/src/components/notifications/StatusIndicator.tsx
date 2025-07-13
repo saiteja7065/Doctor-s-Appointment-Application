@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+// Removed framer-motion for better performance - using CSS animations
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -133,49 +133,40 @@ export default function StatusIndicator({
   if (!isVisible) return null;
 
   const renderCompactVariant = () => (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.8 }}
-      className={`inline-flex items-center gap-2 ${className}`}
+    <div
+      className={`inline-flex items-center gap-2 animate-scale-in ${className}`}
     >
       {showIcon && (
         <div className={`${config.color}`}>
-          <StatusIcon 
-            className={`h-4 w-4 ${config.animate ? 'animate-spin' : ''}`} 
+          <StatusIcon
+            className={`h-4 w-4 ${config.animate ? 'animate-spin' : ''}`}
           />
         </div>
       )}
       {showMessage && message && (
         <span className="text-sm font-medium">{message}</span>
       )}
-    </motion.div>
+    </div>
   );
 
   const renderInlineVariant = () => (
-    <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -10 }}
-      className={`inline-flex items-center gap-2 px-2 py-1 rounded-md ${config.bgColor} ${config.borderColor} border ${className}`}
+    <div
+      className={`inline-flex items-center gap-2 px-2 py-1 rounded-md animate-slide-in-left ${config.bgColor} ${config.borderColor} border ${className}`}
     >
       {showIcon && (
-        <StatusIcon 
-          className={`h-3 w-3 ${config.color} ${config.animate ? 'animate-spin' : ''}`} 
+        <StatusIcon
+          className={`h-3 w-3 ${config.color} ${config.animate ? 'animate-spin' : ''}`}
         />
       )}
       {showMessage && message && (
         <span className="text-xs font-medium">{message}</span>
       )}
-    </motion.div>
+    </div>
   );
 
   const renderDefaultVariant = () => (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className={`flex items-center justify-between p-3 rounded-lg border ${config.bgColor} ${config.borderColor} ${className}`}
+    <div
+      className={`flex items-center justify-between p-3 rounded-lg border animate-fade-in-up ${config.bgColor} ${config.borderColor} ${className}`}
     >
       <div className="flex items-center gap-3">
         {showIcon && (
@@ -208,15 +199,15 @@ export default function StatusIndicator({
           {actionLabel}
         </Button>
       )}
-    </motion.div>
+    </div>
   );
 
   return (
-    <AnimatePresence mode="wait">
+    <div>
       {variant === 'compact' && renderCompactVariant()}
       {variant === 'inline' && renderInlineVariant()}
       {variant === 'default' && renderDefaultVariant()}
-    </AnimatePresence>
+    </div>
   );
 }
 

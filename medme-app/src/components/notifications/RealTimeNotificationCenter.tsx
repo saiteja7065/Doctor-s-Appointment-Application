@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+// Removed framer-motion for better performance - using CSS animations
 import { useRealTimeNotifications } from '@/hooks/useRealTimeData';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { withRealTimeData, WithRealTimeDataProps } from '@/components/hoc/withRealTimeData';
@@ -286,23 +286,17 @@ function NotificationCenterComponent({
                   const isHighlighted = highlightedItems.has(notification._id);
 
                   return (
-                    <motion.div
+                    <div
                       key={notification._id}
-                      layout
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ 
-                        opacity: 1, 
-                        x: 0,
-                        scale: isHighlighted ? 1.02 : 1,
-                        backgroundColor: isHighlighted ? 'rgba(59, 130, 246, 0.1)' : 'transparent'
-                      }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ duration: 0.3 }}
-                      className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-sm ${
-                        notification.isRead 
-                          ? 'bg-muted/30 border-muted' 
+                      className={`animate-slide-in-left p-3 rounded-lg border cursor-pointer transition-all duration-300 hover:shadow-sm ${
+                        notification.isRead
+                          ? 'bg-muted/30 border-muted'
                           : `${priorityConfig.bgColor} ${priorityConfig.borderColor}`
-                      } ${isHighlighted ? 'ring-2 ring-blue-400' : ''}`}
+                      } ${isHighlighted ? 'ring-2 ring-blue-400 scale-105' : ''}`}
+                      style={{
+                        backgroundColor: isHighlighted ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                        animationDelay: `${notifications.indexOf(notification) * 50}ms`
+                      }}
                       onClick={() => {
                         onNotificationClick?.(notification);
                         if (!notification.isRead) {
@@ -381,10 +375,10 @@ function NotificationCenterComponent({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
-              </AnimatePresence>
+              </div>
             </div>
           </ScrollArea>
         )}

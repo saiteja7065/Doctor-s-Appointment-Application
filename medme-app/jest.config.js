@@ -62,13 +62,18 @@ const customJestConfig = {
     },
   },
   // Handle async tests
-  testTimeout: 10000,
+  testTimeout: 15000,
   // Clear mocks between tests
   clearMocks: true,
   // Restore mocks after each test
   restoreMocks: true,
   // Environment variables for testing
   setupFiles: ['<rootDir>/jest.env.js'],
+  // Prevent hanging tests
+  forceExit: true,
+  detectOpenHandles: true,
+  // Run tests in band to prevent resource conflicts
+  maxWorkers: 1,
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

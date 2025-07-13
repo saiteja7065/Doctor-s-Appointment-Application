@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+// Removed framer-motion for better performance - using CSS animations
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -136,13 +136,9 @@ export default function UpdateBanner({
   if (!isVisible) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: -20, height: 0 }}
-        animate={{ opacity: 1, y: 0, height: 'auto' }}
-        exit={{ opacity: 0, y: -20, height: 0 }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className={`border-l-4 ${config.bgColor} ${config.borderColor} ${className}`}
+    <div>
+      <div
+        className={`border-l-4 animate-slide-down ${config.bgColor} ${config.borderColor} ${className}`}
       >
         <div className="p-4">
           <div className="flex items-start justify-between">
@@ -212,8 +208,8 @@ export default function UpdateBanner({
             )}
           </div>
         </div>
-      </motion.div>
-    </AnimatePresence>
+      </div>
+    </div>
   );
 }
 

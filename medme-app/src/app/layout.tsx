@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs';
 import { Toaster } from 'sonner';
 import { NotificationProvider } from '@/contexts/NotificationContext';
+import { PWAInstaller } from '@/components/PWAInstaller';
 import "./globals.css";
 
 const geistSans = Geist({
@@ -52,6 +53,7 @@ export default function RootLayout({
                 },
               }}
             />
+            <PWAInstaller />
           </NotificationProvider>
         </body>
       </html>
