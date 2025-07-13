@@ -16,6 +16,8 @@ export enum NotificationType {
   DOCTOR_EARNINGS = 'doctor_earnings',
   WITHDRAWAL_REQUEST = 'withdrawal_request',
   VERIFICATION_STATUS = 'verification_status',
+  DOCTOR_APPLICATION_SUBMITTED = 'doctor_application_submitted',
+  ACCOUNT_STATUS_CHANGED = 'account_status_changed',
   SYSTEM_MAINTENANCE = 'system_maintenance',
   GENERAL = 'general',
 }

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { constructWebhookEvent, getCreditPackage, getSubscriptionPlan, formatPrice } from '@/lib/stripe';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import { Patient } from '@/lib/models/Patient';
+import { Transaction, TransactionType, TransactionStatus } from '@/lib/models/Transaction';
 import {
   sendPaymentConfirmation,
   sendSubscriptionActivated,
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     console.log('Processing webhook event:', event.type);
 
     // Connect to database
-    const isConnected = await connectToDatabase();
+    const isConnected = await connectToMongoose();
     if (!isConnected) {
       console.error('Database connection failed');
       return NextResponse.json(
@@ -145,6 +146,17 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         patient.creditBalance += credits;
         await patient.save();
 
+        // Create transaction record
+        const transaction = Transaction.createCreditPurchase(
+          patient.userId,
+          patient.clerkId,
+          credits,
+          session.amount_total || 0,
+          packageId,
+          session.id
+        );
+        await transaction.markCompleted();
+
         console.log(`Added ${credits} credits to patient ${patient.clerkId}`);
 
         // Send payment confirmation email
@@ -195,6 +207,17 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
           patient.subscriptionEndDate = endDate;
 
           await patient.save();
+
+          // Create subscription transaction record
+          const subscriptionTransaction = Transaction.createSubscription(
+            patient.userId,
+            patient.clerkId,
+            credits,
+            session.amount_total || 0,
+            planId,
+            session.id
+          );
+          await subscriptionTransaction.markCompleted();
 
           console.log(`Activated ${planId} subscription for patient ${patient.clerkId}`);
 

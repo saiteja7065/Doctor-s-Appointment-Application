@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { 
-  createCreditCheckoutSession, 
-  createSubscriptionCheckoutSession, 
+import { auth, clerkClient } from '@clerk/nextjs/server';
+import {
+  createCreditCheckoutSession,
+  createSubscriptionCheckoutSession,
   getOrCreateCustomer,
-  stripeConfig 
+  stripeConfig
 } from '@/lib/stripe';
 
 /**
@@ -23,12 +23,35 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { type, packageId, planId, email, name } = body;
+    const { type, packageId, planId, successUrl, cancelUrl } = body;
 
-    if (!type || !email) {
+    if (!type) {
       return NextResponse.json(
-        { error: 'Missing required fields: type, email' },
+        { error: 'Missing required field: type' },
         { status: 400 }
+      );
+    }
+
+    // Get user information from Clerk
+    let email: string;
+    let name: string;
+
+    try {
+      const user = await clerkClient.users.getUser(userId);
+      email = user.emailAddresses[0]?.emailAddress || '';
+      name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User';
+
+      if (!email) {
+        return NextResponse.json(
+          { error: 'User email not found' },
+          { status: 400 }
+        );
+      }
+    } catch (error) {
+      console.error('Error fetching user from Clerk:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch user information' },
+        { status: 500 }
       );
     }
 
@@ -61,8 +84,11 @@ export async function POST(request: NextRequest) {
 
       // Create checkout URLs
       const baseUrl = stripeConfig.appUrl;
-      const successUrl = `${baseUrl}/dashboard/patient/subscription?success=true&session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = `${baseUrl}/dashboard/patient/subscription?canceled=true`;
+      const defaultSuccessUrl = `${baseUrl}/dashboard/patient/subscription/success?session_id={CHECKOUT_SESSION_ID}`;
+      const defaultCancelUrl = `${baseUrl}/dashboard/patient/subscription?canceled=true`;
+
+      const finalSuccessUrl = successUrl || defaultSuccessUrl;
+      const finalCancelUrl = cancelUrl || defaultCancelUrl;
 
       let session;
 
@@ -71,16 +97,16 @@ export async function POST(request: NextRequest) {
         session = await createCreditCheckoutSession(
           customer.id,
           packageId,
-          successUrl,
-          cancelUrl
+          finalSuccessUrl,
+          finalCancelUrl
         );
       } else {
         // Create subscription session
         session = await createSubscriptionCheckoutSession(
           customer.id,
           planId,
-          successUrl,
-          cancelUrl
+          finalSuccessUrl,
+          finalCancelUrl
         );
       }
 

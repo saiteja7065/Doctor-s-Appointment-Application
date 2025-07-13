@@ -7,6 +7,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import TechnicalPrerequisites from '@/components/consultation/TechnicalPrerequisites';
+import WaitingRoom from '@/components/consultation/WaitingRoom';
+import CallQualityManager from '@/components/consultation/CallQualityManager';
 import {
   Video,
   VideoOff,
@@ -23,11 +26,15 @@ import {
   CheckCircle,
   Monitor,
   Wifi,
-  Camera
+  Camera,
+  MessageCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import VonageVideoSession from '@/components/video/VonageVideoSession';
+import PreCallScreen from '@/components/consultation/PreCallScreen';
+import VideoControls from '@/components/consultation/VideoControls';
+import ChatFallback from '@/components/consultation/ChatFallback';
 
 interface ConsultationData {
   token: string;
@@ -47,6 +54,7 @@ export default function VideoConsultationPage() {
   const sessionId = params.sessionId as string;
 
   const [consultationData, setConsultationData] = useState<ConsultationData | null>(null);
+  const [consultationPhase, setConsultationPhase] = useState<'loading' | 'prerequisites' | 'waiting' | 'active' | 'ended'>('loading');
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -57,6 +65,15 @@ export default function VideoConsultationPage() {
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [useEnhancedVideo, setUseEnhancedVideo] = useState(true);
+
+  // Enhanced video consultation states
+  const [showPreCallScreen, setShowPreCallScreen] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+  const [bandwidthSavingMode, setBandwidthSavingMode] = useState(false);
+  const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'fair' | 'poor'>('good');
+  const [showChatFallback, setShowChatFallback] = useState(false);
+  const [isVideoCallFailed, setIsVideoCallFailed] = useState(false);
+  const [isAudioCallFailed, setIsAudioCallFailed] = useState(false);
 
   const videoRef = useRef<HTMLDivElement>(null);
   const sessionRef = useRef<any>(null);
@@ -93,7 +110,22 @@ export default function VideoConsultationPage() {
       }
 
       setConsultationData(data);
-      
+
+      // Check if we should show pre-call screen based on appointment time
+      const appointmentTime = new Date(data.appointmentTime);
+      const now = new Date();
+      const timeDifference = appointmentTime.getTime() - now.getTime();
+      const fifteenMinutes = 15 * 60 * 1000;
+
+      if (timeDifference > fifteenMinutes) {
+        setConsultationPhase('precall');
+        setShowPreCallScreen(true);
+      } else {
+        // Move to prerequisites check after loading
+        setConsultationPhase('prerequisites');
+        setShowPreCallScreen(false);
+      }
+
       // Initialize video session if we have a real token (not demo)
       if (!data.token.startsWith('demo_token_')) {
         await initializeVideoSession(data);
@@ -164,7 +196,8 @@ export default function VideoConsultationPage() {
 
       if (response.ok) {
         toast.success('Consultation ended successfully');
-        router.push('/dashboard');
+        setConsultationPhase('ended');
+        setTimeout(() => router.push('/dashboard'), 2000);
       } else {
         throw new Error('Failed to end consultation');
       }
@@ -172,6 +205,82 @@ export default function VideoConsultationPage() {
       console.error('Error ending consultation:', error);
       toast.error('Failed to end consultation');
     }
+  };
+
+  const handlePrerequisitesComplete = (allPassed: boolean) => {
+    if (allPassed) {
+      setConsultationPhase('waiting');
+    } else {
+      setError('Please resolve the technical issues before joining the consultation');
+    }
+  };
+
+  const handleJoinCall = () => {
+    setConsultationPhase('active');
+    setIsConnected(true);
+    setSessionStartTime(new Date());
+    setConnectionCount(1);
+  };
+
+  const handleLeaveWaiting = () => {
+    router.push('/dashboard');
+  };
+
+  // Enhanced video consultation handlers
+  const handlePreCallJoin = () => {
+    setShowPreCallScreen(false);
+    setConsultationPhase('prerequisites');
+  };
+
+  const handleVideoToggle = (enabled: boolean) => {
+    setIsVideoEnabled(enabled);
+    if (!enabled && bandwidthSavingMode) {
+      setBandwidthSavingMode(false);
+    }
+  };
+
+  const handleAudioToggle = (enabled: boolean) => {
+    setIsAudioEnabled(enabled);
+    if (!enabled) {
+      setIsMuted(true);
+    }
+  };
+
+  const handleMuteToggle = (muted: boolean) => {
+    setIsMuted(muted);
+  };
+
+  const handleBandwidthModeToggle = (enabled: boolean) => {
+    setBandwidthSavingMode(enabled);
+    if (enabled) {
+      setIsVideoEnabled(false);
+      toast.info('Bandwidth saving mode: Video disabled for better audio quality');
+    }
+  };
+
+  const handleQualityChange = (quality: any) => {
+    if (quality.connectionStability) {
+      setConnectionQuality(quality.connectionStability);
+    }
+
+    // Auto-enable chat fallback if connection is poor
+    if (quality.connectionStability === 'poor' && !showChatFallback) {
+      setIsVideoCallFailed(true);
+      setIsAudioCallFailed(true);
+      setShowChatFallback(true);
+      toast.warning('Poor connection detected. Chat fallback is now available.');
+    }
+  };
+
+  const handleSendChatMessage = async (message: string) => {
+    // In a real implementation, this would send the message through the consultation API
+    console.log('Sending chat message:', message);
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 500));
+  };
+
+  const handleSystemCheck = () => {
+    router.push(`/consultation/${sessionId}/check`);
   };
 
   const formatTime = (seconds: number) => {
@@ -230,6 +339,75 @@ export default function VideoConsultationPage() {
             <h2 className="text-xl font-semibold mb-2">Consultation Not Found</h2>
             <p className="text-muted-foreground mb-4">
               The consultation session could not be found or has expired.
+            </p>
+            <Link href="/dashboard">
+              <Button>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show Pre-Call Screen
+  if (consultationPhase === 'precall' && showPreCallScreen) {
+    return (
+      <PreCallScreen
+        appointmentTime={consultationData.appointmentTime}
+        patientName={consultationData.patientName}
+        doctorName={consultationData.doctorName}
+        duration={consultationData.duration}
+        onJoinCall={handlePreCallJoin}
+        onSystemCheck={handleSystemCheck}
+        isSystemCheckPassed={true}
+      />
+    );
+  }
+
+  // Phase-based rendering
+  if (consultationPhase === 'prerequisites') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5 p-6">
+        <div className="max-w-4xl mx-auto">
+          <TechnicalPrerequisites
+            onComplete={handlePrerequisitesComplete}
+            autoStart={true}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (consultationPhase === 'waiting') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5 p-6">
+        <div className="max-w-4xl mx-auto">
+          <WaitingRoom
+            sessionId={sessionId as string}
+            userRole={consultationData.userRole}
+            appointmentTime={consultationData.appointmentTime}
+            doctorName={consultationData.doctorName}
+            patientName={consultationData.patientName}
+            onJoinCall={handleJoinCall}
+            onLeaveWaiting={handleLeaveWaiting}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (consultationPhase === 'ended') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-secondary/5">
+        <Card className="glass-card max-w-md">
+          <CardContent className="p-6 text-center">
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Consultation Ended</h2>
+            <p className="text-muted-foreground mb-4">
+              Thank you for using our consultation service. You will be redirected shortly.
             </p>
             <Link href="/dashboard">
               <Button>
@@ -302,37 +480,38 @@ export default function VideoConsultationPage() {
                       </div>
                     </div>
                     
-                    {/* Video controls overlay */}
+                    {/* Enhanced Video Controls */}
                     <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-                      <div className="flex items-center space-x-4 bg-black/50 backdrop-blur-sm rounded-full px-6 py-3">
+                      <VideoControls
+                        isVideoEnabled={isVideoEnabled}
+                        isAudioEnabled={isAudioEnabled}
+                        isMuted={isMuted}
+                        isCallActive={isConnected}
+                        onVideoToggle={handleVideoToggle}
+                        onAudioToggle={handleAudioToggle}
+                        onMuteToggle={handleMuteToggle}
+                        onEndCall={endConsultation}
+                        showAdvancedControls={true}
+                        connectionQuality={connectionQuality}
+                        bandwidthSavingMode={bandwidthSavingMode}
+                        onBandwidthModeToggle={handleBandwidthModeToggle}
+                      />
+                    </div>
+
+                    {/* Chat Fallback Button */}
+                    {(isVideoCallFailed || isAudioCallFailed) && (
+                      <div className="absolute top-4 right-4">
                         <Button
-                          variant={isVideoEnabled ? "secondary" : "destructive"}
+                          variant="secondary"
                           size="sm"
-                          onClick={toggleVideo}
-                          className="rounded-full"
+                          onClick={() => setShowChatFallback(true)}
+                          className="bg-yellow-500 hover:bg-yellow-600 text-white"
                         >
-                          {isVideoEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
-                        </Button>
-                        
-                        <Button
-                          variant={isAudioEnabled ? "secondary" : "destructive"}
-                          size="sm"
-                          onClick={toggleAudio}
-                          className="rounded-full"
-                        >
-                          {isAudioEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-                        </Button>
-                        
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={endConsultation}
-                          className="rounded-full"
-                        >
-                          <PhoneOff className="h-4 w-4" />
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Chat Fallback
                         </Button>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ) : (
                   <div className="h-full flex items-center justify-center">
@@ -447,6 +626,29 @@ export default function VideoConsultationPage() {
           </div>
         </div>
       </div>
+
+      {/* Call Quality Manager */}
+      <CallQualityManager
+        sessionId={sessionId as string}
+        isActive={consultationPhase === 'active' && isConnected}
+        onQualityChange={handleQualityChange}
+        onAdjustmentMade={(adjustment) => {
+          console.log('Quality adjustment made:', adjustment);
+        }}
+      />
+
+      {/* Chat Fallback */}
+      <ChatFallback
+        isVisible={showChatFallback}
+        currentUserId={user?.id || ''}
+        currentUserName={user?.fullName || 'User'}
+        currentUserRole={consultationData?.role || 'patient'}
+        appointmentId={consultationData?.appointmentId || ''}
+        onSendMessage={handleSendChatMessage}
+        onClose={() => setShowChatFallback(false)}
+        isVideoCallFailed={isVideoCallFailed}
+        isAudioCallFailed={isAudioCallFailed}
+      />
     </div>
   );
 }

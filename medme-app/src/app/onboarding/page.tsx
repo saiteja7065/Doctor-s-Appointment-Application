@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { UserRole } from '@/lib/types/user';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Stethoscope, User } from 'lucide-react';
+import { Stethoscope, User, Shield } from 'lucide-react';
 
 export default function OnboardingPage() {
   const { user } = useUser();
@@ -132,6 +132,18 @@ export default function OnboardingPage() {
         'Earn credits for consultations',
       ],
     },
+    {
+      role: UserRole.ADMIN,
+      title: 'Administrator',
+      description: 'Manage platform and verify doctors',
+      icon: Shield,
+      features: [
+        'Verify doctor applications',
+        'Manage user accounts',
+        'Monitor platform activity',
+        'Administrative access only',
+      ],
+    },
   ];
 
   return (
@@ -146,7 +158,7 @@ export default function OnboardingPage() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 mb-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
           {roleOptions.map((option, index) => {
             const Icon = option.icon;
             return (

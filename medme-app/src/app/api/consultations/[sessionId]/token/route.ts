@@ -257,15 +257,39 @@ export async function POST(
     appointment.paymentStatus = 'paid'; // Mark as paid when consultation is completed
     await appointment.save();
 
-    // Update doctor earnings if not already done
+    // Update doctor earnings using the new earnings service
     const doctor = await Doctor.findById(appointment.doctorId);
     const patientForEarnings = await Patient.findById(appointment.patientId);
     const doctorUser = await User.findById(doctor?.userId);
 
-    if (doctor) {
-      const previousEarnings = doctor.totalEarnings || 0;
-      doctor.totalEarnings += appointment.consultationFee;
-      await doctor.save();
+    if (doctor && doctorUser && patientForEarnings) {
+      try {
+        // Import the earnings service
+        const { EarningsService } = await import('@/lib/services/earningsService');
+
+        // Record consultation earning
+        await EarningsService.recordConsultationEarning(
+          doctor._id,
+          doctorUser.clerkId,
+          appointment._id,
+          patientForEarnings._id,
+          appointment.patientName,
+          appointment.consultationFee,
+          new Date(appointment.appointmentDate),
+          appointment.consultationType
+        );
+
+        // Update legacy doctor earnings for backward compatibility
+        doctor.totalEarnings += appointment.consultationFee;
+        doctor.totalConsultations += 1;
+        await doctor.save();
+      } catch (earningsError) {
+        console.error('Error recording consultation earning:', earningsError);
+        // Fallback to legacy method
+        doctor.totalEarnings += appointment.consultationFee;
+        doctor.totalConsultations += 1;
+        await doctor.save();
+      }
 
       // Send doctor earnings notification email
       if (doctorUser && patient) {

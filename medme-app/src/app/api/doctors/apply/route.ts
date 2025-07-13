@@ -4,6 +4,8 @@ import { connectToMongoose } from '@/lib/mongodb';
 import { User, UserRole } from '@/lib/models/User';
 import { DoctorApplication, ApplicationStatus } from '@/lib/models/DoctorApplication';
 import { MedicalSpecialty } from '@/lib/models/Doctor';
+import { createNotification, NotificationType, NotificationPriority } from '@/lib/notifications';
+import { sendEmail } from '@/lib/email';
 import { logUserManagementEvent } from '@/lib/audit';
 import { AuditAction } from '@/lib/models/AuditLog';
 import mongoose from 'mongoose';
@@ -118,6 +120,9 @@ export async function POST(request: NextRequest) {
         yearsOfExperience: validatedData.yearsOfExperience,
       }
     );
+
+    // Notify all admins about the new application
+    await notifyAdminsOfNewApplication(application);
 
     // Log the application submission
     console.log(`Doctor application submitted for user ${userId} (${validatedData.firstName} ${validatedData.lastName})`);
@@ -235,5 +240,109 @@ export async function GET() {
       },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Notify all admin users about a new doctor application
+ */
+async function notifyAdminsOfNewApplication(application: any) {
+  try {
+    // Find all admin users
+    const adminUsers = await User.find({ role: UserRole.ADMIN });
+
+    if (adminUsers.length === 0) {
+      console.log('No admin users found to notify about new doctor application');
+      return;
+    }
+
+    const title = '👨‍⚕️ New Doctor Application';
+    const message = `Dr. ${application.firstName} ${application.lastName} has submitted a new application for ${application.specialty}. Please review and verify their credentials.`;
+
+    // Create notifications for all admins
+    const notificationPromises = adminUsers.map(admin =>
+      createNotification(
+        admin.clerkId,
+        'admin',
+        NotificationType.DOCTOR_APPLICATION_SUBMITTED,
+        title,
+        message,
+        {
+          priority: NotificationPriority.HIGH,
+          actionUrl: '/dashboard/admin/doctors',
+          metadata: {
+            applicationId: application._id.toString(),
+            doctorName: `${application.firstName} ${application.lastName}`,
+            specialty: application.specialty,
+            licenseNumber: application.licenseNumber,
+            submittedAt: application.submittedAt?.toISOString()
+          }
+        }
+      )
+    );
+
+    // Send email notifications to all admins
+    const emailPromises = adminUsers.map(admin => {
+      const emailContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0;">MedMe Admin Portal</h1>
+          </div>
+
+          <div style="padding: 30px; background: #f8f9fa;">
+            <h2 style="color: #333; margin-bottom: 20px;">${title}</h2>
+
+            <p style="color: #666; font-size: 16px; line-height: 1.6;">
+              Dear Admin,
+            </p>
+
+            <p style="color: #666; font-size: 16px; line-height: 1.6;">
+              A new doctor application has been submitted and requires your review:
+            </p>
+
+            <div style="background: white; border: 1px solid #ddd; padding: 20px; border-radius: 5px; margin: 20px 0;">
+              <h3 style="margin-top: 0; color: #333;">Application Details</h3>
+              <p><strong>Doctor:</strong> Dr. ${application.firstName} ${application.lastName}</p>
+              <p><strong>Specialty:</strong> ${application.specialty}</p>
+              <p><strong>License Number:</strong> ${application.licenseNumber}</p>
+              <p><strong>Experience:</strong> ${application.yearsOfExperience} years</p>
+              <p><strong>Submitted:</strong> ${new Date(application.submittedAt).toLocaleDateString()}</p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/admin/doctors"
+                 style="background: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                Review Application
+              </a>
+            </div>
+
+            <p style="color: #666; font-size: 14px; margin-top: 30px;">
+              Please review the application and verify the doctor's credentials before approval.
+            </p>
+
+            <div style="border-top: 1px solid #ddd; padding-top: 20px; margin-top: 30px; text-align: center;">
+              <p style="color: #999; font-size: 12px;">
+                © 2025 MedMe. All rights reserved.
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      return sendEmail(
+        admin.email,
+        `MedMe - ${title}`,
+        emailContent
+      );
+    });
+
+    // Execute all notifications and emails
+    await Promise.all([...notificationPromises, ...emailPromises]);
+
+    console.log(`Notified ${adminUsers.length} admin(s) about new doctor application from Dr. ${application.firstName} ${application.lastName}`);
+
+  } catch (error) {
+    console.error('Error notifying admins about new doctor application:', error);
+    // Don't throw error to avoid breaking the main application flow
   }
 }

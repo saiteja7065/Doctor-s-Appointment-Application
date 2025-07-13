@@ -133,13 +133,14 @@ export async function getCollection(collectionName: string) {
 // Mongoose connection configuration
 const mongooseOptions = {
   maxPoolSize: 10,
-  serverSelectionTimeoutMS: 5000, // Reduced timeout
-  socketTimeoutMS: 30000, // Reduced timeout
+  serverSelectionTimeoutMS: 15000, // Increased timeout for Atlas
+  socketTimeoutMS: 45000, // Increased timeout
   maxIdleTimeMS: 30000,
   retryWrites: true,
-  connectTimeoutMS: 5000, // Reduced timeout
+  connectTimeoutMS: 15000, // Increased timeout
   heartbeatFrequencyMS: 10000,
   bufferCommands: true, // Enable mongoose buffering for better reliability
+  bufferMaxEntries: 0, // Disable mongoose buffering timeout
   family: 4, // Use IPv4
   // Let MongoDB driver handle SSL/TLS automatically for Atlas
 };

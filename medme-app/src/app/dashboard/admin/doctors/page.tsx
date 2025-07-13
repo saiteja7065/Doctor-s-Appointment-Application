@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LazyMotionDiv } from '@/components/ui/lazy-motion';
+// Removed framer-motion import to fix compilation error
 
 interface DoctorApplication {
   _id: string;
@@ -238,11 +238,7 @@ export default function AdminDoctorsPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <LazyMotionDiv
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <div>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Doctor Verification</h1>
@@ -254,15 +250,11 @@ export default function AdminDoctorsPage() {
             {pendingCount} Pending
           </Badge>
         </div>
-      </LazyMotionDiv>
+      </div>
 
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <LazyMotionDiv
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
+        <div>
           <Card className="glass-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
@@ -275,13 +267,9 @@ export default function AdminDoctorsPage() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
 
-        <LazyMotionDiv
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
+        <div>
           <Card className="glass-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Approved</CardTitle>
@@ -294,13 +282,9 @@ export default function AdminDoctorsPage() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
 
-        <LazyMotionDiv
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
+        <div>
           <Card className="glass-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Rejected</CardTitle>
@@ -313,13 +297,9 @@ export default function AdminDoctorsPage() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
 
-        <LazyMotionDiv
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
+        <div>
           <Card className="glass-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
@@ -332,15 +312,11 @@ export default function AdminDoctorsPage() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
       </div>
 
       {/* Filters */}
-      <LazyMotionDiv
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-      >
+      <div>
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="text-lg">Filter Applications</CardTitle>
@@ -386,14 +362,10 @@ export default function AdminDoctorsPage() {
             </div>
           </CardContent>
         </Card>
-      </LazyMotionDiv>
+      </div>
 
       {/* Applications List */}
-      <LazyMotionDiv
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.6 }}
-      >
+      <div>
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="text-lg">Doctor Applications</CardTitle>
@@ -462,7 +434,7 @@ export default function AdminDoctorsPage() {
             </Tabs>
           </CardContent>
         </Card>
-      </LazyMotionDiv>
+      </div>
 
       {/* Application Detail Modal */}
       {selectedApplication && (

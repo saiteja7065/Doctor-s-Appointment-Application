@@ -283,3 +283,88 @@ export async function POST(request: NextRequest) {
     }
   });
 }
+
+/**
+ * PATCH /api/patients/subscription
+ * Update subscription settings (auto-renewal, billing cycle, etc.)
+ */
+export async function PATCH(request: NextRequest) {
+  return withPatientAuth(async (userContext) => {
+    try {
+      const body = await request.json();
+      const { action, settings } = body;
+
+      if (!action) {
+        return NextResponse.json(
+          { error: 'Missing required field: action' },
+          { status: 400 }
+        );
+      }
+
+      // Connect to database
+      const isConnected = await connectToDatabase();
+      if (!isConnected) {
+        return NextResponse.json(
+          { error: 'Database connection failed' },
+          { status: 500 }
+        );
+      }
+
+      // Find patient
+      const patient = await Patient.findOne({ clerkId: userContext.userId });
+      if (!patient) {
+        return NextResponse.json(
+          { error: 'Patient not found' },
+          { status: 404 }
+        );
+      }
+
+      switch (action) {
+        case 'update_settings':
+          if (settings) {
+            // Update subscription settings
+            patient.subscriptionSettings = {
+              ...patient.subscriptionSettings,
+              ...settings
+            };
+            await patient.save();
+
+            return NextResponse.json({
+              success: true,
+              message: 'Subscription settings updated successfully',
+              settings: patient.subscriptionSettings
+            });
+          }
+          break;
+
+        case 'toggle_auto_renewal':
+          // Toggle auto-renewal setting
+          const currentAutoRenew = patient.subscriptionSettings?.autoRenew !== false;
+          patient.subscriptionSettings = {
+            ...patient.subscriptionSettings,
+            autoRenew: !currentAutoRenew
+          };
+          await patient.save();
+
+          return NextResponse.json({
+            success: true,
+            message: `Auto-renewal ${!currentAutoRenew ? 'enabled' : 'disabled'}`,
+            autoRenew: !currentAutoRenew
+          });
+
+        default:
+          return NextResponse.json(
+            { error: 'Invalid action' },
+            { status: 400 }
+          );
+      }
+
+    } catch (error) {
+      console.error('Error in subscription PATCH:', error);
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      );
+    }
+  });
+}

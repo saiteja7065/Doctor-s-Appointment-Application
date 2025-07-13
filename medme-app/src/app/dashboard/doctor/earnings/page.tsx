@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WithdrawalModal } from '@/components/doctor/WithdrawalModal';
 import { toast } from 'sonner';
 import { 
   DollarSign, 
@@ -152,6 +153,7 @@ export default function DoctorEarningsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState('all');
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+  const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false);
 
   useEffect(() => {
     fetchEarningsData();
@@ -273,6 +275,41 @@ export default function DoctorEarningsPage() {
 
   const requestWithdrawal = () => {
     setShowWithdrawalModal(true);
+  };
+
+  const handleWithdrawalSubmit = async (withdrawalData: any) => {
+    setIsSubmittingWithdrawal(true);
+    try {
+      const response = await fetch('/api/doctors/earnings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'withdraw',
+          amount: withdrawalData.amount,
+          method: withdrawalData.method,
+          bankDetails: withdrawalData.bankDetails,
+          paypalEmail: withdrawalData.paypalEmail,
+          upiId: withdrawalData.upiId
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success('Withdrawal request submitted successfully');
+        setShowWithdrawalModal(false);
+        await fetchEarningsData(); // Refresh data
+      } else {
+        throw new Error(data.error || 'Failed to submit withdrawal request');
+      }
+    } catch (error: any) {
+      console.error('Error submitting withdrawal:', error);
+      toast.error(error.message || 'Failed to submit withdrawal request');
+    } finally {
+      setIsSubmittingWithdrawal(false);
+    }
   };
 
   const exportTransactions = () => {
@@ -523,6 +560,15 @@ export default function DoctorEarningsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Withdrawal Modal */}
+      <WithdrawalModal
+        isOpen={showWithdrawalModal}
+        onClose={() => setShowWithdrawalModal(false)}
+        onSubmit={handleWithdrawalSubmit}
+        availableBalance={earningsData.availableBalance}
+        isLoading={isSubmittingWithdrawal}
+      />
     </div>
   );
 }

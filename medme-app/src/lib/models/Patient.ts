@@ -32,6 +32,23 @@ export interface IPatient extends Document {
       push: boolean;
     };
   };
+  paymentSettings?: {
+    autoRecharge?: boolean;
+    autoRechargeThreshold?: number;
+    autoRechargeAmount?: number;
+    emailNotifications?: boolean;
+    smsNotifications?: boolean;
+    receiptEmails?: boolean;
+    lowBalanceAlerts?: boolean;
+    subscriptionReminders?: boolean;
+  };
+  subscriptionSettings?: {
+    autoRenew?: boolean;
+    billingCycle?: 'monthly' | 'yearly';
+    pauseOnLowUsage?: boolean;
+    upgradeNotifications?: boolean;
+    usageAlerts?: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -139,6 +156,67 @@ const PatientSchema = new Schema<IPatient>(
           type: Boolean,
           default: true,
         },
+      },
+    },
+    paymentSettings: {
+      autoRecharge: {
+        type: Boolean,
+        default: false,
+      },
+      autoRechargeThreshold: {
+        type: Number,
+        default: 2,
+        min: 1,
+        max: 10,
+      },
+      autoRechargeAmount: {
+        type: Number,
+        default: 10,
+        min: 5,
+        max: 100,
+      },
+      emailNotifications: {
+        type: Boolean,
+        default: true,
+      },
+      smsNotifications: {
+        type: Boolean,
+        default: false,
+      },
+      receiptEmails: {
+        type: Boolean,
+        default: true,
+      },
+      lowBalanceAlerts: {
+        type: Boolean,
+        default: true,
+      },
+      subscriptionReminders: {
+        type: Boolean,
+        default: true,
+      },
+    },
+    subscriptionSettings: {
+      autoRenew: {
+        type: Boolean,
+        default: true,
+      },
+      billingCycle: {
+        type: String,
+        enum: ['monthly', 'yearly'],
+        default: 'monthly',
+      },
+      pauseOnLowUsage: {
+        type: Boolean,
+        default: false,
+      },
+      upgradeNotifications: {
+        type: Boolean,
+        default: true,
+      },
+      usageAlerts: {
+        type: Boolean,
+        default: true,
       },
     },
   },

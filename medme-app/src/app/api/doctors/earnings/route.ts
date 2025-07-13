@@ -3,6 +3,8 @@ import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { User } from '@/lib/models/User';
 import { Doctor } from '@/lib/models/Doctor';
+import { EarningsService } from '@/lib/services/earningsService';
+import { WithdrawalMethod } from '@/lib/models/DoctorEarnings';
 import { sendWithdrawalRequestConfirmation } from '@/lib/email';
 import { sendNotification } from '@/lib/notifications';
 
@@ -99,17 +101,77 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Doctor profile not found' }, { status: 404 });
     }
 
-    // TODO: Implement actual earnings calculation from appointments/consultations
-    // For now, return demo data structure that matches the frontend expectations
+    // Get comprehensive earnings data using the new earnings service
+    const doctorEarnings = await EarningsService.getDoctorEarnings(doctor._id);
+    const earningTransactions = await EarningsService.getEarningTransactions(doctor._id, 50);
+    const withdrawalRequests = await EarningsService.getWithdrawalRequests(doctor._id, 20);
+
+    // If no earnings record exists, create one
+    if (!doctorEarnings) {
+      await EarningsService.updateDoctorEarnings(doctor._id, userId);
+      const newEarnings = await EarningsService.getDoctorEarnings(doctor._id);
+
+      const earningsData = {
+        totalEarnings: newEarnings?.totalEarnings || 0,
+        availableBalance: newEarnings?.availableBalance || 0,
+        pendingPayments: newEarnings?.pendingEarnings || 0,
+        monthlyEarnings: newEarnings?.thisMonthEarnings || 0,
+        lastMonthEarnings: newEarnings?.lastMonthEarnings || 0,
+        totalConsultations: newEarnings?.totalConsultations || 0,
+        averagePerConsultation: newEarnings?.averagePerConsultation || 0,
+        transactions: earningTransactions.map(tx => ({
+          id: tx._id.toString(),
+          type: tx.type,
+          amount: tx.amount,
+          description: tx.description,
+          date: tx.createdAt.toISOString(),
+          status: tx.status,
+          patientName: tx.patientName
+        })),
+        withdrawals: withdrawalRequests.map(wr => ({
+          id: wr._id.toString(),
+          requestId: wr.requestId,
+          amount: wr.amount,
+          method: wr.method,
+          status: wr.status,
+          requestDate: wr.requestDate.toISOString(),
+          processedDate: wr.processedDate?.toISOString(),
+          completedDate: wr.completedDate?.toISOString()
+        })),
+        monthlyData: newEarnings?.monthlyData || []
+      };
+
+      return NextResponse.json(earningsData);
+    }
+
     const earningsData = {
-      totalEarnings: doctor.earnings?.total || 0,
-      availableBalance: doctor.earnings?.available || 0,
-      pendingPayments: doctor.earnings?.pending || 0,
-      monthlyEarnings: doctor.earnings?.thisMonth || 0,
-      totalConsultations: doctor.stats?.totalConsultations || 0,
-      averagePerConsultation: doctor.earnings?.averagePerConsultation || 0,
-      transactions: doctor.earnings?.transactions || [],
-      monthlyData: doctor.earnings?.monthlyData || []
+      totalEarnings: doctorEarnings.totalEarnings,
+      availableBalance: doctorEarnings.availableBalance,
+      pendingPayments: doctorEarnings.pendingEarnings,
+      monthlyEarnings: doctorEarnings.thisMonthEarnings,
+      lastMonthEarnings: doctorEarnings.lastMonthEarnings,
+      totalConsultations: doctorEarnings.totalConsultations,
+      averagePerConsultation: doctorEarnings.averagePerConsultation,
+      transactions: earningTransactions.map(tx => ({
+        id: tx._id.toString(),
+        type: tx.type,
+        amount: tx.amount,
+        description: tx.description,
+        date: tx.createdAt.toISOString(),
+        status: tx.status,
+        patientName: tx.patientName
+      })),
+      withdrawals: withdrawalRequests.map(wr => ({
+        id: wr._id.toString(),
+        requestId: wr.requestId,
+        amount: wr.amount,
+        method: wr.method,
+        status: wr.status,
+        requestDate: wr.requestDate.toISOString(),
+        processedDate: wr.processedDate?.toISOString(),
+        completedDate: wr.completedDate?.toISOString()
+      })),
+      monthlyData: doctorEarnings.monthlyData
     };
 
     return NextResponse.json(earningsData);
@@ -171,44 +233,92 @@ export async function POST(request: NextRequest) {
 
     // Handle different actions
     if (action === 'withdraw') {
-      const requestId = `withdraw_${Date.now()}`;
+      const { method, bankDetails, paypalEmail, upiId } = body;
 
-      // Send withdrawal request confirmation email
-      try {
-        await sendWithdrawalRequestConfirmation({
-          doctorEmail: user.email,
-          doctorName: `${user.firstName} ${user.lastName}`,
-          requestId: requestId,
-          amount: amount,
-          withdrawalMethod: 'Bank Transfer', // Default method
-          requestDate: new Date().toLocaleDateString(),
-        });
-      } catch (emailError) {
-        console.error('Failed to send withdrawal request confirmation email:', emailError);
-      }
-
-      // Send in-app notification
-      try {
-        sendNotification(
-          user.clerkId,
-          'doctor',
-          'withdrawalRequested',
-          amount.toString(),
-          requestId
+      if (!method) {
+        return NextResponse.json(
+          { error: 'Withdrawal method is required' },
+          { status: 400 }
         );
-      } catch (notificationError) {
-        console.error('Failed to send withdrawal request notification:', notificationError);
       }
 
-      // TODO: Implement actual withdrawal logic
-      // For now, just return success response
-      return NextResponse.json({
-        success: true,
-        message: 'Withdrawal request submitted successfully',
-        transactionId: requestId,
-        amount: amount,
-        status: 'pending'
-      });
+      // Validate withdrawal method
+      if (!Object.values(WithdrawalMethod).includes(method)) {
+        return NextResponse.json(
+          { error: 'Invalid withdrawal method' },
+          { status: 400 }
+        );
+      }
+
+      // Prepare payment details based on method
+      let paymentDetails: any = {};
+      switch (method) {
+        case WithdrawalMethod.BANK_TRANSFER:
+          if (!bankDetails) {
+            return NextResponse.json(
+              { error: 'Bank details are required for bank transfer' },
+              { status: 400 }
+            );
+          }
+          paymentDetails.bankDetails = bankDetails;
+          break;
+        case WithdrawalMethod.PAYPAL:
+          if (!paypalEmail) {
+            return NextResponse.json(
+              { error: 'PayPal email is required for PayPal withdrawal' },
+              { status: 400 }
+            );
+          }
+          paymentDetails.paypalEmail = paypalEmail;
+          break;
+        case WithdrawalMethod.UPI:
+          if (!upiId) {
+            return NextResponse.json(
+              { error: 'UPI ID is required for UPI withdrawal' },
+              { status: 400 }
+            );
+          }
+          paymentDetails.upiId = upiId;
+          break;
+      }
+
+      try {
+        // Create withdrawal request using the earnings service
+        const withdrawalRequest = await EarningsService.createWithdrawalRequest(
+          doctor._id,
+          userId,
+          amount,
+          method,
+          paymentDetails
+        );
+
+        // Send withdrawal request confirmation email
+        try {
+          await sendWithdrawalRequestConfirmation({
+            doctorEmail: user.email,
+            doctorName: `${user.firstName} ${user.lastName}`,
+            requestId: withdrawalRequest.requestId,
+            amount: amount,
+            withdrawalMethod: method,
+            requestDate: new Date().toLocaleDateString(),
+          });
+        } catch (emailError) {
+          console.error('Failed to send withdrawal request confirmation email:', emailError);
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: 'Withdrawal request submitted successfully',
+          transactionId: withdrawalRequest.requestId,
+          amount: amount,
+          status: 'pending'
+        });
+      } catch (serviceError: any) {
+        return NextResponse.json(
+          { error: serviceError.message || 'Failed to create withdrawal request' },
+          { status: 400 }
+        );
+      }
     }
 
     return NextResponse.json({

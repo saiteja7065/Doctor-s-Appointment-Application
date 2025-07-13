@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CreditBalance } from '@/components/ui/credit-balance';
+import { PaymentHistory } from '@/components/ui/payment-history';
 import {
   CreditCard,
   Star,
@@ -15,7 +16,8 @@ import {
   Crown,
   Gift,
   History,
-  Plus
+  Plus,
+  RefreshCw
 } from 'lucide-react';
 
 interface SubscriptionPlan {
@@ -43,6 +45,7 @@ export default function SubscriptionPage() {
   const [currentPlan, setCurrentPlan] = useState('free');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [availablePackages, setAvailablePackages] = useState<any[]>([]);
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
 
@@ -55,75 +58,98 @@ export default function SubscriptionPage() {
       features: [
         '2 consultation credits',
         'Basic video calls',
-        'Standard support',
-        'Medical records access'
+        'Standard support'
       ],
       current: currentPlan === 'free'
     },
     {
       id: 'basic',
       name: 'Basic Plan',
-      price: 29,
+      price: 19,
       credits: 10,
       features: [
         '10 consultation credits',
         'HD video calls',
         'Priority support',
-        'Medical records access',
-        'Prescription management',
-        'Health tracking'
-      ]
+        'Appointment reminders'
+      ],
+      popular: true,
+      current: currentPlan === 'basic'
     },
     {
       id: 'premium',
       name: 'Premium Plan',
-      price: 79,
+      price: 49,
       credits: 30,
       features: [
         '30 consultation credits',
-        '4K video calls',
-        '24/7 priority support',
-        'Advanced medical records',
-        'Prescription management',
-        'Health tracking & analytics',
-        'Specialist referrals',
+        'HD video calls',
+        'Priority support',
+        'Appointment reminders',
+        'Health records storage',
         'Family account sharing'
       ],
-      popular: true
+      current: currentPlan === 'premium'
     },
     {
       id: 'unlimited',
       name: 'Unlimited Plan',
-      price: 149,
+      price: 99,
       credits: 999,
       features: [
         'Unlimited consultations',
         '4K video calls',
-        'Dedicated support manager',
-        'Advanced medical records',
-        'Prescription management',
-        'Health tracking & analytics',
-        'Specialist referrals',
+        'Premium support',
+        'Appointment reminders',
+        'Health records storage',
         'Family account sharing',
-        'Annual health checkup'
-      ]
+        'Personal health assistant'
+      ],
+      current: currentPlan === 'unlimited'
     }
   ];
+
+  const loadPaymentStatus = async () => {
+    try {
+      const response = await fetch('/api/payments/status');
+
+      if (response.ok) {
+        const result = await response.json();
+        const data = result.data;
+
+        setCurrentCredits(data.creditBalance);
+        setCurrentPlan(data.subscriptionPlan);
+        setTransactions(data.recentTransactions || []);
+
+        return data;
+      } else {
+        throw new Error('Failed to fetch payment status');
+      }
+    } catch (error) {
+      console.error('Error loading payment status:', error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     const loadSubscriptionData = async () => {
       setIsLoading(true);
 
       try {
-        const response = await fetch('/api/patients/subscription');
+        // Try new payment status API first
+        const paymentData = await loadPaymentStatus();
 
-        if (response.ok) {
-          const data = await response.json();
-          setCurrentCredits(data.creditBalance);
-          setCurrentPlan(data.subscriptionPlan);
-          setTransactions(data.transactions);
+        if (!paymentData) {
+          // Fallback to existing subscription API
+          const response = await fetch('/api/patients/subscription');
 
-          // Set available packages and plans from API
+          if (response.ok) {
+            const data = await response.json();
+            setCurrentCredits(data.creditBalance);
+            setCurrentPlan(data.subscriptionPlan);
+            setTransactions(data.transactions);
+
+          // Load available packages and plans if provided
           if (data.availablePackages) {
             setAvailablePackages(data.availablePackages);
           }
@@ -168,17 +194,16 @@ export default function SubscriptionPage() {
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
-      case 'purchase': return <Plus className="h-4 w-4 text-green-600" />;
-      case 'usage': return <CreditCard className="h-4 w-4 text-blue-600" />;
-      case 'refund': return <Gift className="h-4 w-4 text-purple-600" />;
-      case 'bonus': return <Gift className="h-4 w-4 text-purple-600" />;
-      default: return <History className="h-4 w-4 text-gray-600" />;
+      case 'purchase': return <Plus className="h-4 w-4 text-green-500" />;
+      case 'usage': return <CreditCard className="h-4 w-4 text-blue-500" />;
+      case 'refund': return <RefreshCw className="h-4 w-4 text-orange-500" />;
+      default: return <CreditCard className="h-4 w-4 text-gray-500" />;
     }
   };
 
   const handlePurchaseCredits = async (packageId: string) => {
     try {
-      // Create Stripe checkout session
+      // Create checkout session for credit purchase
       const checkoutResponse = await fetch('/api/payments/checkout', {
         method: 'POST',
         headers: {
@@ -186,16 +211,16 @@ export default function SubscriptionPage() {
         },
         body: JSON.stringify({
           type: 'credits',
-          packageId,
-          email: user?.emailAddresses[0]?.emailAddress,
-          name: user?.fullName,
+          packageId: packageId,
+          successUrl: `${window.location.origin}/dashboard/patient/subscription/success`,
+          cancelUrl: `${window.location.origin}/dashboard/patient/subscription`,
         }),
       });
 
       const checkoutData = await checkoutResponse.json();
 
       if (checkoutResponse.ok && checkoutData.url) {
-        // Redirect to Stripe checkout
+        // Redirect to Stripe Checkout
         window.location.href = checkoutData.url;
       } else {
         throw new Error(checkoutData.error || 'Failed to create checkout session');
@@ -208,13 +233,13 @@ export default function SubscriptionPage() {
 
   const handleUpgradePlan = async (planId: string) => {
     try {
-      // Skip if it's the free plan
+      // Don't allow downgrade to free plan
       if (planId === 'free') {
         alert('You are already on the free plan.');
         return;
       }
 
-      // Create Stripe checkout session for subscription
+      // Create checkout session for plan upgrade
       const checkoutResponse = await fetch('/api/payments/checkout', {
         method: 'POST',
         headers: {
@@ -223,15 +248,15 @@ export default function SubscriptionPage() {
         body: JSON.stringify({
           type: 'subscription',
           planId: planId.startsWith('plan_') ? planId : `plan_${planId}`,
-          email: user?.emailAddresses[0]?.emailAddress,
-          name: user?.fullName,
+          successUrl: `${window.location.origin}/dashboard/patient/subscription/success`,
+          cancelUrl: `${window.location.origin}/dashboard/patient/subscription`,
         }),
       });
 
       const checkoutData = await checkoutResponse.json();
 
       if (checkoutResponse.ok && checkoutData.url) {
-        // Redirect to Stripe checkout
+        // Redirect to Stripe Checkout
         window.location.href = checkoutData.url;
       } else {
         throw new Error(checkoutData.error || 'Failed to create checkout session');
@@ -242,12 +267,16 @@ export default function SubscriptionPage() {
     }
   };
 
+  const handleRefreshPayments = async () => {
+    setIsRefreshing(true);
+    await loadPaymentStatus();
+    setIsRefreshing(false);
+  };
+
   if (!isLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse-medical">
-          <div className="w-8 h-8 bg-primary rounded-full"></div>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -306,11 +335,11 @@ export default function SubscriptionPage() {
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <Zap className="h-5 w-5" />
+              <Plus className="h-5 w-5 text-primary" />
               <span>Quick Credit Purchase</span>
             </CardTitle>
             <CardDescription>
-              Need more credits? Purchase them instantly
+              Purchase additional credits for consultations
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -348,14 +377,15 @@ export default function SubscriptionPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-        <div className="mb-4">
-          <h2 className="text-2xl font-semibold text-foreground">Choose Your Plan</h2>
-          <p className="text-muted-foreground">
-            Upgrade your plan to get more consultation credits and premium features
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Crown className="h-5 w-5 text-primary" />
+              <span>Subscription Plans</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {(availablePlans.length > 0 ? [
             { id: 'free', name: 'Free Plan', price: 0, credits: 2, features: ['2 consultation credits', 'Basic video calls', 'Standard support'], current: currentPlan === 'free' },
             ...availablePlans.map(plan => ({
@@ -382,33 +412,28 @@ export default function SubscriptionPage() {
                     </Badge>
                   </div>
                 )}
-                
                 <CardHeader className="text-center">
                   <CardTitle className="flex items-center justify-center space-x-2">
                     {plan.id === 'unlimited' && <Crown className="h-5 w-5 text-yellow-500" />}
                     <span>{plan.name}</span>
                   </CardTitle>
-                  <div className="space-y-2">
-                    <div className="text-3xl font-bold text-primary">
-                      ${plan.price}
-                      {plan.price > 0 && <span className="text-sm text-muted-foreground">/month</span>}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {plan.credits === 999 ? 'Unlimited' : plan.credits} credits
-                    </div>
+                  <div className="text-3xl font-bold text-primary">
+                    ${plan.price}
+                    {plan.price > 0 && <span className="text-sm text-muted-foreground">/month</span>}
                   </div>
+                  <p className="text-sm text-muted-foreground">
+                    {plan.credits === 999 ? 'Unlimited' : plan.credits} credits
+                  </p>
                 </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  <ul className="space-y-2">
+                <CardContent className="flex-1">
+                  <ul className="space-y-2 mb-6">
                     {plan.features.map((feature, i) => (
                       <li key={i} className="flex items-center space-x-2 text-sm">
-                        <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                        <Check className="h-4 w-4 text-green-500" />
                         <span>{feature}</span>
                       </li>
                     ))}
                   </ul>
-                  
                   <Button
                     className="w-full"
                     variant={plan.current ? 'outline' : 'default'}
@@ -422,6 +447,8 @@ export default function SubscriptionPage() {
             </motion.div>
           ))}
         </div>
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Transaction History */}
@@ -432,25 +459,33 @@ export default function SubscriptionPage() {
       >
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <History className="h-5 w-5" />
-              <span>Transaction History</span>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <History className="h-5 w-5 text-primary" />
+                <span>Transaction History</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefreshPayments}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
             </CardTitle>
-            <CardDescription>
-              Your recent credit transactions and usage
-            </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="animate-pulse flex items-center space-x-4">
-                    <div className="w-8 h-8 bg-muted rounded-full"></div>
+                    <div className="rounded-full bg-gray-200 h-10 w-10"></div>
                     <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-muted rounded w-3/4"></div>
-                      <div className="h-3 bg-muted rounded w-1/2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                     </div>
-                    <div className="h-4 bg-muted rounded w-16"></div>
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
                   </div>
                 ))}
               </div>
