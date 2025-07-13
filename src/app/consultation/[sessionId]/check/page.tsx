@@ -21,6 +21,7 @@ import {
 import Link from 'next/link';
 import { toast } from 'sonner';
 import SystemCheck from '@/components/consultation/SystemCheck';
+import EnhancedSystemCheck from '@/components/consultation/EnhancedSystemCheck';
 
 interface ConsultationData {
   appointmentId: string;
@@ -42,6 +43,8 @@ export default function PreCallCheckPage() {
   const [error, setError] = useState<string | null>(null);
   const [systemCheckPassed, setSystemCheckPassed] = useState<boolean | null>(null);
   const [canProceed, setCanProceed] = useState(false);
+  const [useEnhancedCheck, setUseEnhancedCheck] = useState(true);
+  const [checkResults, setCheckResults] = useState<any>(null);
 
   useEffect(() => {
     if (user && sessionId) {
@@ -67,10 +70,11 @@ export default function PreCallCheckPage() {
     }
   };
 
-  const handleSystemCheckComplete = (passed: boolean) => {
+  const handleSystemCheckComplete = (passed: boolean, results?: any) => {
     setSystemCheckPassed(passed);
     setCanProceed(true);
-    
+    setCheckResults(results);
+
     if (passed) {
       toast.success('System check completed successfully!');
     } else {
@@ -85,6 +89,7 @@ export default function PreCallCheckPage() {
   const handleRetryCheck = () => {
     setSystemCheckPassed(null);
     setCanProceed(false);
+    setCheckResults(null);
   };
 
   if (isLoading) {
@@ -150,9 +155,18 @@ export default function PreCallCheckPage() {
                 </p>
               </div>
             </div>
-            <Badge variant="secondary">
-              {consultationData?.role === 'patient' ? 'Patient' : 'Doctor'}
-            </Badge>
+            <div className="flex items-center space-x-2">
+              <Badge variant="secondary">
+                {consultationData?.role === 'patient' ? 'Patient' : 'Doctor'}
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUseEnhancedCheck(!useEnhancedCheck)}
+              >
+                {useEnhancedCheck ? 'Basic Check' : 'Enhanced Check'}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -220,11 +234,20 @@ export default function PreCallCheckPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <SystemCheck
-            onComplete={handleSystemCheckComplete}
-            onRetry={handleRetryCheck}
-            showRetryButton={canProceed}
-          />
+          {useEnhancedCheck ? (
+            <EnhancedSystemCheck
+              onComplete={handleSystemCheckComplete}
+              onRetry={handleRetryCheck}
+              showRetryButton={canProceed}
+              autoStart={true}
+            />
+          ) : (
+            <SystemCheck
+              onComplete={handleSystemCheckComplete}
+              onRetry={handleRetryCheck}
+              showRetryButton={canProceed}
+            />
+          )}
         </motion.div>
 
         {/* Results and Actions */}
