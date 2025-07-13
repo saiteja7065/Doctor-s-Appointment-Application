@@ -131,19 +131,34 @@ export default function FindDoctorsPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setDoctors(data.doctors);
-        setCurrentPage(data.pagination.page);
-        setTotalPages(data.pagination.totalPages);
-        setTotalResults(data.pagination.total);
+        setDoctors(data.doctors || []);
+        setCurrentPage(data.pagination?.page || 1);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setTotalResults(data.pagination?.total || 0);
 
-        if (!filterOptions) {
+        if (!filterOptions && data.filters) {
           setFilterOptions(data.filters);
         }
+
+        // Log if using demo data
+        if (data.isDemo) {
+          console.log('ℹ️ Using demo doctor data');
+        }
       } else {
-        console.error('Failed to fetch doctors:', data.error);
+        console.error('Failed to fetch doctors:', data.error || 'Unknown error');
+        // Set empty results on error
+        setDoctors([]);
+        setCurrentPage(1);
+        setTotalPages(1);
+        setTotalResults(0);
       }
     } catch (error) {
       console.error('Error fetching doctors:', error);
+      // Set empty results on error
+      setDoctors([]);
+      setCurrentPage(1);
+      setTotalPages(1);
+      setTotalResults(0);
     } finally {
       setLoading(false);
     }

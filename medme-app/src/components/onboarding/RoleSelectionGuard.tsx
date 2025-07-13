@@ -147,21 +147,58 @@ export function RoleSelectionGuard({
       } else {
         // Handle error response safely
         let errorMessage = 'Failed to set user role';
+        let errorData: any = {};
+
         try {
           const errorText = await response.text();
           if (errorText) {
-            const errorData = JSON.parse(errorText);
+            errorData = JSON.parse(errorText);
             errorMessage = errorData.message || errorData.error || 'Failed to set user role';
           }
         } catch (parseError) {
           errorMessage = `Server error (${response.status})`;
         }
 
-        setUserRoleData(prev => ({
-          ...prev,
-          loading: false,
-          error: errorMessage
-        }));
+        // Handle specific error cases
+        if (response.status === 409 && (errorMessage.includes('already exists') || errorMessage.includes('User already exists'))) {
+          // User already exists - redirect them based on their existing role
+          console.log('ℹ️ User already exists, redirecting to appropriate dashboard...');
+
+          if (errorData.currentRole) {
+            // Use the existing role from the error response
+            setUserRoleData({
+              role: errorData.currentRole,
+              status: errorData.currentStatus || 'active',
+              hasRole: true,
+              loading: false,
+            });
+
+            // Redirect based on existing role
+            switch (errorData.currentRole) {
+              case UserRole.PATIENT:
+                router.push('/patient/profile');
+                break;
+              case UserRole.DOCTOR:
+                router.push('/doctor/dashboard');
+                break;
+              case UserRole.ADMIN:
+                router.push('/admin/dashboard');
+                break;
+              default:
+                router.push('/dashboard');
+            }
+          } else {
+            // Fallback: refresh to trigger role check
+            window.location.reload();
+          }
+        } else {
+          // Other errors
+          setUserRoleData(prev => ({
+            ...prev,
+            loading: false,
+            error: errorMessage
+          }));
+        }
       }
     } catch (error) {
       console.error('Error setting user role:', error);

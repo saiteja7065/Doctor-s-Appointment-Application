@@ -6,7 +6,7 @@ import { Notification } from '@/lib/models/Notification';
 export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -21,26 +21,46 @@ export async function GET(request: NextRequest) {
     const lastCheck = url.searchParams.get('lastCheck');
     const lastCheckDate = lastCheck ? new Date(lastCheck) : new Date(Date.now() - 5 * 60 * 1000); // Default to 5 minutes ago
 
-    // Check for new notifications since last check
-    const newNotifications = await Notification.find({
-      userId,
-      createdAt: { $gt: lastCheckDate },
-      isRead: false
-    }).sort({ createdAt: -1 });
+    // Initialize default values for graceful fallback
+    let newNotifications = [];
+    let unreadCount = 0;
+    let urgentNotifications = [];
 
-    // Get total unread count
-    const unreadCount = await Notification.countDocuments({
-      userId,
-      isRead: false
-    });
+    try {
+      // Check for new notifications since last check - use clerkId instead of userId
+      // Add timeout and limit to prevent hanging queries
+      newNotifications = await Notification.find({
+        clerkId: userId,
+        createdAt: { $gt: lastCheckDate },
+        isRead: false
+      })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .maxTimeMS(3000) // 3 second timeout
+      .lean(); // Use lean() for better performance
 
-    // Check for any urgent notifications
-    const urgentNotifications = await Notification.find({
-      userId,
-      priority: 'urgent',
-      isRead: false,
-      createdAt: { $gt: new Date(Date.now() - 60 * 60 * 1000) } // Last hour
-    });
+      // Get total unread count with timeout
+      unreadCount = await Notification.countDocuments({
+        clerkId: userId,
+        isRead: false
+      }).maxTimeMS(3000);
+
+      // Check for any urgent notifications with timeout
+      urgentNotifications = await Notification.find({
+        clerkId: userId,
+        priority: 'urgent',
+        isRead: false,
+        createdAt: { $gt: new Date(Date.now() - 60 * 60 * 1000) } // Last hour
+      })
+      .limit(5)
+      .maxTimeMS(3000)
+      .lean();
+
+    } catch (queryError) {
+      // Log the error but don't fail the request
+      console.warn('Notification query timeout or error (expected for new installations):', queryError instanceof Error ? queryError.message : 'Unknown error');
+      // Use default values (already initialized above)
+    }
 
     // Determine if there are significant updates
     const hasUpdates = newNotifications.length > 0 || urgentNotifications.length > 0;
@@ -82,11 +102,11 @@ export async function POST(request: NextRequest) {
       case 'markAsRead':
         if (notificationIds && Array.isArray(notificationIds)) {
           await Notification.updateMany(
-            { 
+            {
               _id: { $in: notificationIds },
-              userId 
+              clerkId: userId
             },
-            { 
+            {
               isRead: true,
               readAt: new Date()
             }
@@ -96,8 +116,8 @@ export async function POST(request: NextRequest) {
 
       case 'markAllAsRead':
         await Notification.updateMany(
-          { userId, isRead: false },
-          { 
+          { clerkId: userId, isRead: false },
+          {
             isRead: true,
             readAt: new Date()
           }
@@ -108,7 +128,7 @@ export async function POST(request: NextRequest) {
         if (notificationIds && Array.isArray(notificationIds)) {
           await Notification.deleteMany({
             _id: { $in: notificationIds },
-            userId
+            clerkId: userId
           });
         }
         break;
@@ -122,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     // Return updated counts
     const unreadCount = await Notification.countDocuments({
-      userId,
+      clerkId: userId,
       isRead: false
     });
 

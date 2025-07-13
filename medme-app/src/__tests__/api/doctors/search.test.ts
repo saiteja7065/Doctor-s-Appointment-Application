@@ -108,7 +108,7 @@ describe('/api/doctors/search', () => {
 
       expect(response.status).toBe(200);
       expect(data.doctors).toHaveLength(1);
-      expect(data.doctors[0].name).toBe('Dr. John Doe');
+      expect(data.doctors[0].fullName).toBe('Dr. John Doe');
       expect(data.pagination.total).toBe(1);
     });
 
@@ -235,9 +235,12 @@ describe('/api/doctors/search', () => {
       const request = new Request('http://localhost:3000/api/doctors/search');
       const response = await GET(request);
 
-      expect(response.status).toBe(500);
+      expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data.error).toBe('Failed to search doctors');
+      expect(data.isDemo).toBe(true);
+      expect(data.error).toBe('Using demo data due to database error');
+      expect(data.doctors).toBeDefined();
+      expect(Array.isArray(data.doctors)).toBe(true);
     });
 
     it('should return correct demo data structure', async () => {

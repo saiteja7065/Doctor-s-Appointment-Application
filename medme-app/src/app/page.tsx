@@ -40,6 +40,11 @@ export default function Home() {
             <span className="text-2xl font-bold text-foreground">MedMe</span>
           </div>
           <div className="flex items-center space-x-4">
+            <Link href="/apply-doctor">
+              <Button variant="outline" className="hidden sm:flex">
+                Join as Doctor
+              </Button>
+            </Link>
             <Link href="/sign-in">
               <Button variant="ghost">Sign In</Button>
             </Link>

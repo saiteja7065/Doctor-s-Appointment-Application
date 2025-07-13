@@ -1,12 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import { User } from '@/lib/models/User';
-import { Doctor } from '@/lib/models/Doctor';
-import { DoctorVerificationStatus } from '@/lib/types/user';
+import { User, UserRole } from '@/lib/models/User';
+import { DoctorApplication, ApplicationStatus } from '@/lib/models/DoctorApplication';
+import { MedicalSpecialty } from '@/lib/models/Doctor';
 import { logUserManagementEvent } from '@/lib/audit';
 import { AuditAction } from '@/lib/models/AuditLog';
 import mongoose from 'mongoose';
+import { z } from 'zod';
+
+// Validation schema for doctor application
+const doctorApplicationSchema = z.object({
+  firstName: z.string().min(2, 'First name must be at least 2 characters').max(50),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters').max(50),
+  email: z.string().email('Invalid email address'),
+  phoneNumber: z.string().min(10, 'Phone number must be at least 10 digits'),
+  specialty: z.nativeEnum(MedicalSpecialty),
+  licenseNumber: z.string().min(5, 'License number must be at least 5 characters'),
+  credentialUrl: z.string().url('Invalid credential URL'),
+  yearsOfExperience: z.number().min(0, 'Years of experience cannot be negative').max(50),
+  education: z.array(z.object({
+    degree: z.string().min(2, 'Degree must be at least 2 characters'),
+    institution: z.string().min(2, 'Institution must be at least 2 characters'),
+    graduationYear: z.number().min(1950).max(new Date().getFullYear()),
+  })).min(1, 'At least one education entry is required'),
+  certifications: z.array(z.object({
+    name: z.string().min(2, 'Certification name must be at least 2 characters'),
+    issuingOrganization: z.string().min(2, 'Issuing organization must be at least 2 characters'),
+    issueDate: z.string().transform((str) => new Date(str)),
+    expiryDate: z.string().optional().transform((str) => str ? new Date(str) : undefined),
+  })).optional().default([]),
+  bio: z.string().max(1000, 'Bio must be less than 1000 characters').optional(),
+  languages: z.array(z.string()).min(1, 'At least one language is required'),
+  consultationFee: z.number().min(1, 'Consultation fee must be at least 1 credit').max(20),
+  additionalNotes: z.string().max(2000, 'Additional notes must be less than 2000 characters').optional(),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,37 +44,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Parse request body
+    // Parse and validate request body
     const body = await request.json();
-    const {
-      clerkId,
-      firstName,
-      lastName,
-      specialty,
-      licenseNumber,
-      credentialUrl,
-      documentUrls,
-      yearsOfExperience,
-      education,
-      certifications,
-      bio,
-      languages,
-      timeZone,
-      consultationFee,
-    } = body;
-
-    // Validate required fields
-    if (!specialty || !licenseNumber || !credentialUrl || !yearsOfExperience || !bio) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    // Validate that the user is applying for themselves
-    if (clerkId !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const validatedData = doctorApplicationSchema.parse(body);
 
     // Connect to database
     const isConnected = await connectToDatabase();
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           message: 'Doctor application submitted successfully (demo mode)',
-          applicationId: 'demo_' + clerkId + '_' + Date.now(),
+          applicationId: 'demo_' + userId + '_' + Date.now(),
           status: 'pending',
           estimatedReviewTime: '2-5 business days',
         },
@@ -65,99 +65,68 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already exists
-    const user = await User.findOne({ clerkId });
-    if (!user) {
+    // Check if user already has an application
+    const existingApplication = await DoctorApplication.findOne({ clerkId: userId });
+    if (existingApplication) {
       return NextResponse.json(
         {
-          error: 'User not found',
-          message: 'Please complete the onboarding process first by selecting your role as Doctor.'
-        },
-        { status: 404 }
-      );
-    }
-
-    // Verify user has doctor role - roles are immutable after creation
-    if (user.role !== 'doctor') {
-      return NextResponse.json(
-        {
-          error: 'Invalid role',
-          message: 'Only users with Doctor role can apply. Roles cannot be changed after account creation. Please create a separate account with Doctor role.'
-        },
-        { status: 403 }
-      );
-    }
-
-    // Update user status to pending verification
-    if (user.status !== 'pending_verification') {
-      user.status = 'pending_verification';
-      await user.save();
-    }
-
-    // Check if doctor application already exists
-    const existingDoctor = await Doctor.findOne({ clerkId });
-    if (existingDoctor) {
-      return NextResponse.json(
-        { 
           error: 'Application already exists',
-          message: 'You have already submitted a doctor application. Please wait for review.'
+          message: 'You have already submitted a doctor application. Please check your application status.',
+          applicationId: existingApplication._id,
+          status: existingApplication.status
         },
         { status: 409 }
       );
     }
 
-    // Create doctor application
-    const doctorApplication = new Doctor({
-      userId: user._id,
-      clerkId,
-      verificationStatus: DoctorVerificationStatus.PENDING,
-      specialty,
-      licenseNumber,
-      credentialUrl,
-      documentUrls: documentUrls || {},
-      yearsOfExperience,
-      education: education || [],
-      certifications: certifications || [],
-      bio,
-      languages: languages || ['English'],
-      timeZone: timeZone || 'UTC',
-      consultationFee: consultationFee || 2,
-      availability: [], // Will be set up later in dashboard
-      totalEarnings: 0,
-      totalConsultations: 0,
-      averageRating: 0,
-      totalRatings: 0,
-      isOnline: false,
-      lastActiveAt: new Date(),
+    // Check if user is already a doctor
+    const existingUser = await User.findOne({ clerkId: userId });
+    if (existingUser && existingUser.role === UserRole.DOCTOR) {
+      return NextResponse.json(
+        {
+          error: 'Already a doctor',
+          message: 'You are already registered as a doctor on the platform.'
+        },
+        { status: 409 }
+      );
+    }
+
+    // Create new doctor application
+    const application = new DoctorApplication({
+      clerkId: userId,
+      ...validatedData,
+      status: ApplicationStatus.PENDING,
+      submittedAt: new Date(),
+      uploadedDocuments: [], // Documents will be uploaded separately
+      adminReviews: [],
     });
 
-    await doctorApplication.save();
+    await application.save();
 
     // Log the application submission for audit
     await logUserManagementEvent(
       AuditAction.DOCTOR_APPLICATION_SUBMIT,
-      clerkId,
-      user._id.toString(),
-      `Doctor application submitted by ${firstName} ${lastName} (${specialty})`,
+      userId,
+      application._id.toString(),
+      `Doctor application submitted by ${validatedData.firstName} ${validatedData.lastName} (${validatedData.specialty})`,
       request,
       undefined,
       {
-        applicationId: doctorApplication._id.toString(),
-        specialty,
-        licenseNumber,
-        yearsOfExperience,
-        hasDocuments: !!(documentUrls?.medicalLicense || documentUrls?.degreeCertificate),
+        applicationId: application._id.toString(),
+        specialty: validatedData.specialty,
+        licenseNumber: validatedData.licenseNumber,
+        yearsOfExperience: validatedData.yearsOfExperience,
       }
     );
 
     // Log the application submission
-    console.log(`Doctor application submitted for user ${clerkId} (${firstName} ${lastName})`);
+    console.log(`Doctor application submitted for user ${userId} (${validatedData.firstName} ${validatedData.lastName})`);
 
     return NextResponse.json(
       {
         message: 'Doctor application submitted successfully',
-        applicationId: doctorApplication._id,
-        status: 'pending',
+        applicationId: application._id,
+        status: application.status,
         estimatedReviewTime: '2-5 business days',
       },
       { status: 201 }
@@ -165,22 +134,25 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error submitting doctor application:', error);
-    
-    // Handle specific MongoDB errors
-    if (error instanceof mongoose.Error.ValidationError) {
-      const validationErrors = Object.values(error.errors).map(err => err.message);
+
+    // Handle validation errors
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
-          error: 'Validation error',
-          details: validationErrors
+        {
+          error: 'Validation failed',
+          details: error.errors.map(err => ({
+            field: err.path.join('.'),
+            message: err.message
+          }))
         },
         { status: 400 }
       );
     }
 
-    if (error instanceof mongoose.Error && error.message.includes('duplicate key')) {
+    // Handle duplicate key errors
+    if (error instanceof Error && error.message.includes('duplicate key')) {
       return NextResponse.json(
-        { 
+        {
           error: 'Application already exists',
           message: 'You have already submitted a doctor application.'
         },
@@ -189,9 +161,9 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
-        message: 'Failed to submit application. Please try again.'
+        message: 'Failed to submit doctor application. Please try again.'
       },
       { status: 500 }
     );
@@ -211,35 +183,56 @@ export async function GET() {
     const isConnected = await connectToDatabase();
     if (!isConnected) {
       return NextResponse.json(
-        { error: 'Database not available' },
-        { status: 503 }
+        {
+          hasApplication: false,
+          message: 'Database not available (demo mode)'
+        },
+        { status: 200 }
       );
     }
 
     // Find doctor application
-    const doctor = await Doctor.findOne({ clerkId: userId });
-    if (!doctor) {
+    const application = await DoctorApplication.findOne({ clerkId: userId });
+    if (!application) {
       return NextResponse.json(
-        { error: 'No application found' },
+        {
+          hasApplication: false,
+          message: 'No doctor application found'
+        },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(
-      {
-        applicationId: doctor._id,
-        status: doctor.verificationStatus,
-        specialty: doctor.specialty,
-        submittedAt: doctor.createdAt,
-        lastUpdated: doctor.updatedAt,
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      success: true,
+      hasApplication: true,
+      application: {
+        id: application._id,
+        status: application.status,
+        submittedAt: application.submittedAt,
+        specialty: application.specialty,
+        fullName: application.fullName,
+        email: application.email,
+        phoneNumber: application.phoneNumber,
+        yearsOfExperience: application.yearsOfExperience,
+        consultationFee: application.consultationFee,
+        latestReview: application.latestReview,
+        uploadedDocuments: application.uploadedDocuments.map(doc => ({
+          type: doc.type,
+          fileName: doc.fileName,
+          uploadedAt: doc.uploadedAt,
+          fileSize: doc.fileSize,
+        })),
+      }
+    });
 
   } catch (error) {
     console.error('Error fetching doctor application:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: 'Internal server error',
+        message: 'Failed to fetch doctor application. Please try again.'
+      },
       { status: 500 }
     );
   }
