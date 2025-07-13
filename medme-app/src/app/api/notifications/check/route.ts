@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Notification } from '@/lib/models/Notification';
+import mongoose from 'mongoose';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    await connectToDatabase();
+    // Connect to database with graceful fallback
+    const isConnected = await connectToDatabase();
+    if (!isConnected) {
+      console.log('Database not available, returning empty notification data');
+      return NextResponse.json({
+        hasUpdates: false,
+        newNotificationsCount: 0,
+        unreadCount: 0,
+        urgentCount: 0,
+        lastCheck: new Date().toISOString(),
+        notifications: [],
+        message: 'Database not available'
+      });
+    }
 
     // Get the last check timestamp from query params
     const url = new URL(request.url);
@@ -27,34 +41,52 @@ export async function GET(request: NextRequest) {
     let urgentNotifications = [];
 
     try {
-      // Check for new notifications since last check - use clerkId instead of userId
-      // Add timeout and limit to prevent hanging queries
-      newNotifications = await Notification.find({
-        clerkId: userId,
-        createdAt: { $gt: lastCheckDate },
-        isRead: false
-      })
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .maxTimeMS(3000) // 3 second timeout
-      .lean(); // Use lean() for better performance
+      // Check if notification collection exists first
+      let collectionExists = false;
+      try {
+        if (mongoose.connection.db) {
+          const collections = await mongoose.connection.db.listCollections({ name: 'notifications' }).toArray();
+          collectionExists = collections.length > 0;
+        }
+      } catch (collectionError) {
+        console.log('Could not check collection existence (expected for new installations)');
+        collectionExists = false;
+      }
 
-      // Get total unread count with timeout
-      unreadCount = await Notification.countDocuments({
-        clerkId: userId,
-        isRead: false
-      }).maxTimeMS(3000);
+      if (!collectionExists) {
+        // Collection doesn't exist, return empty results immediately
+        console.log('Notification collection does not exist yet (expected for new installations)');
+        // Use default values (already initialized above)
+      } else {
+        // Check for new notifications since last check - use clerkId (string) instead of userId (ObjectId)
+        // Add timeout and limit to prevent hanging queries
+        newNotifications = await Notification.find({
+          clerkId: userId, // userId from Clerk is a string, matches clerkId field
+          createdAt: { $gt: lastCheckDate },
+          isRead: false
+        })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .maxTimeMS(3000) // 3 second timeout
+        .lean(); // Use lean() for better performance
 
-      // Check for any urgent notifications with timeout
-      urgentNotifications = await Notification.find({
-        clerkId: userId,
-        priority: 'urgent',
-        isRead: false,
-        createdAt: { $gt: new Date(Date.now() - 60 * 60 * 1000) } // Last hour
-      })
-      .limit(5)
-      .maxTimeMS(3000)
-      .lean();
+        // Get total unread count with timeout
+        unreadCount = await Notification.countDocuments({
+          clerkId: userId, // Use clerkId field for string matching
+          isRead: false
+        }).maxTimeMS(3000);
+
+        // Check for any urgent notifications with timeout
+        urgentNotifications = await Notification.find({
+          clerkId: userId, // Use clerkId field for string matching
+          priority: 'urgent',
+          isRead: false,
+          createdAt: { $gt: new Date(Date.now() - 60 * 60 * 1000) } // Last hour
+        })
+        .limit(5)
+        .maxTimeMS(3000)
+        .lean();
+      }
 
     } catch (queryError) {
       // Log the error but don't fail the request
@@ -76,10 +108,16 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error checking for notification updates:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    // Return graceful fallback instead of 500 error
+    return NextResponse.json({
+      hasUpdates: false,
+      newNotificationsCount: 0,
+      unreadCount: 0,
+      urgentCount: 0,
+      lastCheck: new Date().toISOString(),
+      notifications: [],
+      error: 'Service temporarily unavailable'
+    }, { status: 200 }); // Return 200 with error message instead of 500
   }
 }
 

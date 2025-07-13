@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import { User, UserRole } from '@/lib/models/User';
 import { DoctorApplication, ApplicationStatus } from '@/lib/models/DoctorApplication';
 import { MedicalSpecialty } from '@/lib/models/Doctor';
@@ -48,8 +48,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = doctorApplicationSchema.parse(body);
 
-    // Connect to database
-    const isConnected = await connectToDatabase();
+    // Connect to database using Mongoose
+    const isConnected = await connectToMongoose();
     if (!isConnected) {
       // Return success response even when database is not available
       // This allows the application to work in development/demo mode
@@ -179,8 +179,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Connect to database
-    const isConnected = await connectToDatabase();
+    // Connect to database using Mongoose
+    const isConnected = await connectToMongoose();
     if (!isConnected) {
       return NextResponse.json(
         {

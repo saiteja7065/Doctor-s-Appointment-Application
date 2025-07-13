@@ -139,8 +139,7 @@ const mongooseOptions = {
   retryWrites: true,
   connectTimeoutMS: 5000, // Reduced timeout
   heartbeatFrequencyMS: 10000,
-  bufferCommands: false, // Disable mongoose buffering
-  bufferMaxEntries: 0, // Disable mongoose buffering completely
+  bufferCommands: true, // Enable mongoose buffering for better reliability
   family: 4, // Use IPv4
   // Let MongoDB driver handle SSL/TLS automatically for Atlas
 };

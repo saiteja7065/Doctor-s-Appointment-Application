@@ -85,6 +85,38 @@ export async function GET(request: NextRequest) {
           hasPrev: (filters.page || 1) > 1,
         },
         filters: getAvailableFilters(),
+        isDemo: true,
+        message: 'Database not available - using demo data'
+      }, { status: 200 });
+    }
+
+    // Check if doctors collection exists to avoid timeout errors
+    let collectionExists = false;
+    try {
+      if (mongoose.connection.db) {
+        const collections = await mongoose.connection.db.listCollections({ name: 'doctors' }).toArray();
+        collectionExists = collections.length > 0;
+      }
+    } catch (collectionError) {
+      console.log('Could not check doctors collection existence (expected for new installations)');
+      collectionExists = false;
+    }
+
+    if (!collectionExists) {
+      console.log('Doctors collection does not exist yet (expected for new installations)');
+      return NextResponse.json({
+        doctors: getDemoData(filters),
+        pagination: {
+          page: filters.page || 1,
+          limit: filters.limit || 12,
+          total: 24,
+          totalPages: 2,
+          hasNext: (filters.page || 1) < 2,
+          hasPrev: (filters.page || 1) > 1,
+        },
+        filters: getAvailableFilters(),
+        isDemo: true,
+        message: 'Doctors collection not found - using demo data'
       }, { status: 200 });
     }
 
@@ -309,17 +341,34 @@ async function getAvailableFilters() {
       return getDemoFilters();
     }
 
-    // Get unique specialties
+    // Check if doctors collection exists to avoid timeout errors
+    let collectionExists = false;
+    try {
+      if (mongoose.connection.db) {
+        const collections = await mongoose.connection.db.listCollections({ name: 'doctors' }).toArray();
+        collectionExists = collections.length > 0;
+      }
+    } catch (collectionError) {
+      console.log('Could not check doctors collection existence for filters');
+      return getDemoFilters();
+    }
+
+    if (!collectionExists) {
+      console.log('Doctors collection does not exist for filters - using demo filters');
+      return getDemoFilters();
+    }
+
+    // Get unique specialties with timeout
     const specialties = await Doctor.distinct('specialty', {
       verificationStatus: DoctorVerificationStatus.APPROVED,
-    });
+    }).maxTimeMS(3000);
 
-    // Get unique languages
+    // Get unique languages with timeout
     const languages = await Doctor.distinct('languages', {
       verificationStatus: DoctorVerificationStatus.APPROVED,
-    });
+    }).maxTimeMS(3000);
 
-    // Get fee range
+    // Get fee range with timeout
     const feeStats = await Doctor.aggregate([
       { $match: { verificationStatus: DoctorVerificationStatus.APPROVED } },
       {
@@ -330,9 +379,9 @@ async function getAvailableFilters() {
           avgFee: { $avg: '$consultationFee' },
         },
       },
-    ]);
+    ]).maxTimeMS(3000);
 
-    // Get experience range
+    // Get experience range with timeout
     const experienceStats = await Doctor.aggregate([
       { $match: { verificationStatus: DoctorVerificationStatus.APPROVED } },
       {
@@ -343,7 +392,7 @@ async function getAvailableFilters() {
           avgExperience: { $avg: '$yearsOfExperience' },
         },
       },
-    ]);
+    ]).maxTimeMS(3000);
 
     return {
       specialties: specialties.map(specialty => ({
@@ -352,14 +401,14 @@ async function getAvailableFilters() {
       })),
       languages: languages.flat().filter((lang, index, arr) => arr.indexOf(lang) === index),
       feeRange: {
-        min: (feeStats && feeStats.length > 0) ? feeStats[0]?.minFee || 2 : 2,
-        max: (feeStats && feeStats.length > 0) ? feeStats[0]?.maxFee || 10 : 10,
-        average: (feeStats && feeStats.length > 0) ? Math.round(feeStats[0]?.avgFee || 2) : 2,
+        min: (feeStats && feeStats.length > 0 && feeStats[0]) ? feeStats[0].minFee || 2 : 2,
+        max: (feeStats && feeStats.length > 0 && feeStats[0]) ? feeStats[0].maxFee || 10 : 10,
+        average: (feeStats && feeStats.length > 0 && feeStats[0]) ? Math.round(feeStats[0].avgFee || 2) : 2,
       },
       experienceRange: {
-        min: (experienceStats && experienceStats.length > 0) ? experienceStats[0]?.minExperience || 1 : 1,
-        max: (experienceStats && experienceStats.length > 0) ? experienceStats[0]?.maxExperience || 30 : 30,
-        average: (experienceStats && experienceStats.length > 0) ? Math.round(experienceStats[0]?.avgExperience || 5) : 5,
+        min: (experienceStats && experienceStats.length > 0 && experienceStats[0]) ? experienceStats[0].minExperience || 1 : 1,
+        max: (experienceStats && experienceStats.length > 0 && experienceStats[0]) ? experienceStats[0].maxExperience || 30 : 30,
+        average: (experienceStats && experienceStats.length > 0 && experienceStats[0]) ? Math.round(experienceStats[0].avgExperience || 5) : 5,
       },
       sortOptions: [
         { value: 'rating', label: 'Highest Rated' },
