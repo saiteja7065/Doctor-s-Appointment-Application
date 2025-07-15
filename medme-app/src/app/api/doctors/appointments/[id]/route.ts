@@ -22,7 +22,7 @@ export async function GET(
     const appointmentId = params.id;
 
     // Connect to database
-    const isConnected = await connectToDatabase();
+    const isConnected = await connectToMongoose();
     if (!isConnected) {
       // Return demo appointment data
       console.log('Database not available, returning demo appointment data');

@@ -27,6 +27,23 @@ export const emailConfig = {
   baseUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
 };
 
+// Email template types
+export enum EmailTemplate {
+  APPOINTMENT_CONFIRMATION = 'appointmentConfirmation',
+  APPOINTMENT_REMINDER = 'appointmentReminder',
+  PAYMENT_CONFIRMATION = 'paymentConfirmation',
+  SUBSCRIPTION_ACTIVATED = 'subscriptionActivated',
+  CREDIT_DEDUCTION = 'creditDeduction',
+  REFUND_NOTIFICATION = 'refundNotification',
+  LOW_CREDIT_WARNING = 'lowCreditWarning',
+  DOCTOR_EARNINGS_NOTIFICATION = 'doctorEarningsNotification',
+  WITHDRAWAL_REQUEST_CONFIRMATION = 'withdrawalRequestConfirmation',
+  PAYMENT_FAILED = 'paymentFailed',
+  DOCTOR_APPLICATION_APPROVED = 'doctorApplicationApproved',
+  DOCTOR_APPLICATION_REJECTED = 'doctorApplicationRejected',
+  DOCTOR_APPLICATION_ADDITIONAL_INFO = 'doctorApplicationAdditionalInfo'
+}
+
 // Email templates
 export const emailTemplates = {
   appointmentConfirmation: {
@@ -536,6 +553,156 @@ export const emailTemplates = {
         </div>
       </div>
     `
+  },
+
+  doctorApplicationApproved: {
+    subject: 'Doctor Application Approved - Welcome to MedMe!',
+    template: (data: any) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0;">MedMe</h1>
+          <p style="color: white; margin: 5px 0;">Application Approved</p>
+        </div>
+
+        <div style="padding: 30px; background: #f8fafc;">
+          <h2 style="color: #1e293b; margin-bottom: 20px;">🎉 Congratulations! Your Application Has Been Approved</h2>
+
+          <p>Dear ${data.doctorName},</p>
+
+          <p>We are excited to inform you that your doctor application has been approved! Welcome to the MedMe healthcare platform.</p>
+
+          <div style="background: #d1fae5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 15px; margin: 20px 0;">
+            <h3 style="color: #059669; margin: 0 0 10px 0;">What's Next?</h3>
+            <ul style="margin: 10px 0; padding-left: 20px;">
+              <li>Complete your doctor profile setup</li>
+              <li>Set your availability schedule</li>
+              <li>Start accepting patient consultations</li>
+              <li>Begin earning from your expertise</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.loginUrl}"
+               style="background: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Access Doctor Dashboard
+            </a>
+          </div>
+
+          <p>As an approved doctor on MedMe, you can now:</p>
+          <ul>
+            <li>Conduct video consultations with patients</li>
+            <li>Manage your appointment schedule</li>
+            <li>Earn competitive fees for your services</li>
+            <li>Access our comprehensive patient management tools</li>
+          </ul>
+
+          <p>If you have any questions or need assistance getting started, please don't hesitate to contact our support team at ${data.supportEmail}.</p>
+
+          <p>Welcome aboard!</p>
+
+          <p>Best regards,<br>The MedMe Team</p>
+        </div>
+
+        <div style="background: #1e293b; color: white; padding: 20px; text-align: center; font-size: 12px;">
+          <p>© 2024 MedMe. All rights reserved.</p>
+        </div>
+      </div>
+    `
+  },
+
+  doctorApplicationRejected: {
+    subject: 'Doctor Application Update - MedMe',
+    template: (data: any) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); padding: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0;">MedMe</h1>
+          <p style="color: white; margin: 5px 0;">Application Update</p>
+        </div>
+
+        <div style="padding: 30px; background: #f8fafc;">
+          <h2 style="color: #1e293b; margin-bottom: 20px;">Application Status Update</h2>
+
+          <p>Dear ${data.doctorName},</p>
+
+          <p>Thank you for your interest in joining the MedMe healthcare platform. After careful review of your application, we regret to inform you that we are unable to approve your application at this time.</p>
+
+          <div style="background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 15px; margin: 20px 0;">
+            <h3 style="color: #dc2626; margin: 0 0 10px 0;">Reason for Decision:</h3>
+            <p style="margin: 5px 0;">${data.reason}</p>
+          </div>
+
+          <p>We encourage you to review our requirements and consider reapplying in the future if your circumstances change. Our platform maintains high standards to ensure the best possible care for our patients.</p>
+
+          <div style="background: #dbeafe; border: 1px solid #bfdbfe; border-radius: 8px; padding: 15px; margin: 20px 0;">
+            <h3 style="color: #1d4ed8; margin: 0 0 10px 0;">Need Assistance?</h3>
+            <p style="margin: 5px 0;">If you have questions about this decision or would like guidance on reapplying, please contact our support team at ${data.supportEmail}.</p>
+          </div>
+
+          <p>We appreciate your interest in MedMe and wish you the best in your medical practice.</p>
+
+          <p>Best regards,<br>The MedMe Team</p>
+        </div>
+
+        <div style="background: #1e293b; color: white; padding: 20px; text-align: center; font-size: 12px;">
+          <p>© 2024 MedMe. All rights reserved.</p>
+        </div>
+      </div>
+    `
+  },
+
+  doctorApplicationAdditionalInfo: {
+    subject: 'Additional Information Required - Doctor Application',
+    template: (data: any) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); padding: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0;">MedMe</h1>
+          <p style="color: white; margin: 5px 0;">Additional Information Required</p>
+        </div>
+
+        <div style="padding: 30px; background: #f8fafc;">
+          <h2 style="color: #1e293b; margin-bottom: 20px;">Action Required: Additional Information Needed</h2>
+
+          <p>Dear ${data.doctorName},</p>
+
+          <p>Thank you for your doctor application to MedMe. We are currently reviewing your submission and require some additional information to complete the verification process.</p>
+
+          ${data.requestedChanges && data.requestedChanges.length > 0 ? `
+          <div style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 15px; margin: 20px 0;">
+            <h3 style="color: #d97706; margin: 0 0 10px 0;">Required Updates:</h3>
+            <ul style="margin: 10px 0; padding-left: 20px;">
+              ${data.requestedChanges.map((change: string) => `<li>${change}</li>`).join('')}
+            </ul>
+          </div>
+          ` : ''}
+
+          ${data.comments ? `
+          <div style="background: #e0f2fe; border: 1px solid #b3e5fc; border-radius: 8px; padding: 15px; margin: 20px 0;">
+            <h3 style="color: #0277bd; margin: 0 0 10px 0;">Additional Comments:</h3>
+            <p style="margin: 5px 0;">${data.comments}</p>
+          </div>
+          ` : ''}
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.applicationUrl}"
+               style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Update Application
+            </a>
+          </div>
+
+          <p>Please log in to your account and provide the requested information. Once submitted, our team will review your updated application promptly.</p>
+
+          <p>If you have any questions about the required updates, please contact our support team at ${data.supportEmail}.</p>
+
+          <p>Thank you for your patience and cooperation.</p>
+
+          <p>Best regards,<br>The MedMe Team</p>
+        </div>
+
+        <div style="background: #1e293b; color: white; padding: 20px; text-align: center; font-size: 12px;">
+          <p>© 2024 MedMe. All rights reserved.</p>
+        </div>
+      </div>
+    `
   }
 };
 
@@ -795,4 +962,84 @@ export async function sendPaymentFailedNotification(data: {
     template.subject,
     html
   );
+}
+
+/**
+ * Send doctor application approved email
+ */
+export async function sendDoctorApplicationApproved(data: {
+  doctorEmail: string;
+  doctorName: string;
+  loginUrl: string;
+  supportEmail: string;
+}) {
+  const template = emailTemplates.doctorApplicationApproved;
+  const html = template.template(data);
+
+  return await sendEmail(
+    data.doctorEmail,
+    template.subject,
+    html
+  );
+}
+
+/**
+ * Send doctor application rejected email
+ */
+export async function sendDoctorApplicationRejected(data: {
+  doctorEmail: string;
+  doctorName: string;
+  reason: string;
+  supportEmail: string;
+}) {
+  const template = emailTemplates.doctorApplicationRejected;
+  const html = template.template(data);
+
+  return await sendEmail(
+    data.doctorEmail,
+    template.subject,
+    html
+  );
+}
+
+/**
+ * Send doctor application additional info required email
+ */
+export async function sendDoctorApplicationAdditionalInfo(data: {
+  doctorEmail: string;
+  doctorName: string;
+  requestedChanges: string[];
+  comments: string;
+  applicationUrl: string;
+  supportEmail: string;
+}) {
+  const template = emailTemplates.doctorApplicationAdditionalInfo;
+  const html = template.template(data);
+
+  return await sendEmail(
+    data.doctorEmail,
+    template.subject,
+    html
+  );
+}
+
+/**
+ * Generic email sender with template support
+ */
+export async function sendEmailWithTemplate(options: {
+  template: EmailTemplate;
+  to: string;
+  data: any;
+}) {
+  const { template, to, data } = options;
+  const emailTemplate = emailTemplates[template];
+
+  if (!emailTemplate) {
+    throw new Error(`Email template '${template}' not found`);
+  }
+
+  const html = emailTemplate.template(data);
+  const subject = emailTemplate.subject;
+
+  return await sendEmail(to, subject, html);
 }

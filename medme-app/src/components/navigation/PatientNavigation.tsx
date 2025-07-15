@@ -41,10 +41,10 @@ const navigationItems = [
     description: 'Browse and book with doctors',
   },
   {
-    href: '/dashboard/patient/subscription',
-    label: 'Subscription',
+    href: '/dashboard/patient/billing',
+    label: 'Billing & Credits',
     icon: CreditCard,
-    description: 'Manage credits and plans',
+    description: 'Manage subscriptions and credits',
   },
   {
     href: '/dashboard/patient/notifications',

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import Appointment from '@/lib/models/Appointment';
 import { Patient } from '@/lib/models/Patient';
 import { Doctor } from '@/lib/models/Doctor';
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       const timezone = searchParams.get('timezone') || getUserTimezone();
 
       // Connect to database
-      const isConnected = await connectToDatabase();
+      const isConnected = await connectToMongoose();
       if (!isConnected) {
         // Return demo appointments data
         const demoAppointments: AppointmentResponse[] = [
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Connect to database
-      const isConnected = await connectToDatabase();
+      const isConnected = await connectToMongoose();
       if (!isConnected) {
         return NextResponse.json({
           message: 'Appointment cancelled successfully (demo mode)',

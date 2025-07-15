@@ -25,14 +25,14 @@ export async function GET() {
     console.log('🔌 Database connection status:', isConnected);
 
     if (!isConnected) {
-      // Return a default role when database is not available
-      console.log('⚠️ Database not available, returning default patient role for user:', userId);
+      // Return a default doctor role when database is not available for demo purposes
+      console.log('⚠️ Database not available, returning default doctor role for user:', userId);
       return NextResponse.json(
         {
-          role: 'patient',
+          role: 'doctor',
           status: 'active',
           userId: 'temp_' + userId,
-          message: 'Database not configured - using default role'
+          message: 'Database not configured - using demo doctor role'
         },
         { status: 200 }
       );
@@ -45,13 +45,13 @@ export async function GET() {
 
     if (!user) {
       console.log('❌ User not found in database');
-      // Return default patient role for new users
+      // Return default doctor role for new users in demo mode
       return NextResponse.json(
         {
-          role: 'patient',
+          role: 'doctor',
           status: 'active',
           userId: 'new_' + userId,
-          message: 'New user - assigned default patient role'
+          message: 'New user - assigned demo doctor role'
         },
         { status: 200 }
       );
@@ -74,10 +74,10 @@ export async function GET() {
     // Return a fallback response instead of 500 error
     return NextResponse.json(
       {
-        role: 'patient',
+        role: 'doctor',
         status: 'active',
         userId: 'fallback_user',
-        message: 'Error occurred - using fallback role',
+        message: 'Error occurred - using fallback doctor role',
         error: error.message
       },
       { status: 200 } // Changed from 500 to 200 to prevent frontend errors

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/auth/rbac';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import { User } from '@/lib/models/User';
 import { Patient } from '@/lib/models/Patient';
 import { Doctor } from '@/lib/models/Doctor';
@@ -60,7 +60,7 @@ interface SubscriptionData {
 }
 
 async function getFinancialData() {
-  const isConnected = await connectToDatabase();
+  const isConnected = await connectToMongoose();
   
   if (!isConnected) {
     // Return demo data if database is not available

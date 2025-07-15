@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/auth/rbac';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import { User, UserStatus, UserRole } from '@/lib/models/User';
 import { Patient } from '@/lib/models/Patient';
 import { Doctor } from '@/lib/models/Doctor';
@@ -27,7 +27,7 @@ async function handler(userContext: any, request: NextRequest, { params }: { par
     }
 
     // Connect to database
-    const isConnected = await connectToDatabase();
+    const isConnected = await connectToMongoose();
     if (!isConnected) {
       // Return success response for demo mode
       console.log('Database not available, returning success response for user status update demo mode');
@@ -247,7 +247,7 @@ async function getHandler(userContext: any, request: NextRequest, { params }: { 
     const userId = params.id;
 
     // Connect to database
-    const isConnected = await connectToDatabase();
+    const isConnected = await connectToMongoose();
     if (!isConnected) {
       return NextResponse.json(
         { error: 'Database not available' },

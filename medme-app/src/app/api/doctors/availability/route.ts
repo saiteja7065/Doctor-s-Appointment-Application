@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { withDoctorAuth, UserContext } from '@/lib/auth/rbac';
 import { Doctor } from '@/lib/models/Doctor';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import {
   convertAvailabilityToUTC,
   convertAvailabilityToLocal,
@@ -25,7 +25,7 @@ async function handleGET(userContext: UserContext, request: NextRequest): Promis
     }
 
     // Connect to database
-    const isConnected = await connectToDatabase();
+    const isConnected = await connectToMongoose();
     if (!isConnected) {
       // Return demo availability data
       const demoAvailability: LocalTimeSlot[] = [
@@ -162,7 +162,7 @@ async function handlePOST(userContext: UserContext, request: NextRequest): Promi
     }
 
     // Connect to database
-    const isConnected = await connectToDatabase();
+    const isConnected = await connectToMongoose();
     if (!isConnected) {
       return NextResponse.json({
         message: 'Availability updated successfully (demo mode)',

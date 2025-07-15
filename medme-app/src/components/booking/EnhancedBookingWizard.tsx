@@ -365,7 +365,7 @@ export default function EnhancedBookingWizard({
               <div className="space-y-4">
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="font-medium">Doctor</span>
-                  <span>Dr. {doctor.firstName} {doctor.lastName}</span>
+                  <span>{doctor.firstName?.startsWith('Dr.') ? `${doctor.firstName} ${doctor.lastName}` : `Dr. ${doctor.firstName} ${doctor.lastName}`}</span>
                 </div>
                 
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">

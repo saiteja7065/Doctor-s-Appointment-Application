@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import { User, UserRole } from '@/lib/models/User';
 import { Doctor } from '@/lib/models/Doctor';
 import { WithdrawalRequest, WithdrawalStatus } from '@/lib/models/DoctorEarnings';
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Connect to database
-    const isConnected = await connectToDatabase();
+    const isConnected = await connectToMongoose();
     if (!isConnected) {
       // Return demo data for development
       const demoRequests = [
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Connect to database
-    const isConnected = await connectToDatabase();
+    const isConnected = await connectToMongoose();
     if (!isConnected) {
       return NextResponse.json(
         { error: 'Database connection failed' },

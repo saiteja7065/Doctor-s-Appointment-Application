@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import { DoctorApplication, DocumentType } from '@/lib/models/DoctorApplication';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await connectToDatabase();
+    await connectToMongoose();
 
     // Find the doctor application
     const application = await DoctorApplication.findOne({ clerkId: userId });
@@ -173,7 +173,7 @@ export async function GET() {
       );
     }
 
-    await connectToDatabase();
+    await connectToMongoose();
 
     const application = await DoctorApplication.findOne({ clerkId: userId });
     if (!application) {
@@ -236,7 +236,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await connectToDatabase();
+    await connectToMongoose();
 
     const application = await DoctorApplication.findOne({ clerkId: userId });
     if (!application) {

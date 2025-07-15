@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import Appointment from '@/lib/models/Appointment';
 import { Doctor } from '@/lib/models/Doctor';
 import { Patient } from '@/lib/models/Patient';
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Connect to database
-      const isConnected = await connectToDatabase();
+      const isConnected = await connectToMongoose();
       if (!isConnected) {
         return NextResponse.json(
           { error: 'Database connection failed. Please try again later.' },
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Start transaction for atomic operations
-      const session = await connectToDatabase();
+      const session = await connectToMongoose();
 
       try {
         // Deduct credits from patient
@@ -431,7 +431,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Connect to database
-      const isConnected = await connectToDatabase();
+      const isConnected = await connectToMongoose();
       if (!isConnected) {
         // Return demo availability data (times in requested timezone)
         const demoSlots = [];

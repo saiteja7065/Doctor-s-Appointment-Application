@@ -80,18 +80,27 @@ const createMockSchema = () => ({
   })),
 });
 
+// Create ObjectId constructor function
+const ObjectId = jest.fn((id) => ({
+  toString: () => id || 'mock-object-id',
+  toHexString: () => id || 'mock-object-id',
+  equals: jest.fn(() => true),
+  _id: id || 'mock-object-id',
+}));
+
+// Add static methods to ObjectId
+ObjectId.isValid = jest.fn(() => true);
+ObjectId.createFromHexString = jest.fn((hex) => new ObjectId(hex));
+
 const Schema = jest.fn((definition, options) => {
   const schema = createMockSchema();
   // Store the definition and options for test access
   Schema.lastCall = { definition, options };
   return schema;
 });
+
 Schema.Types = {
-  ObjectId: jest.fn((id) => ({
-    toString: () => id || 'mock-object-id',
-    toHexString: () => id || 'mock-object-id',
-    equals: jest.fn(() => true),
-  })),
+  ObjectId: ObjectId,
   String: String,
   Number: Number,
   Date: Date,
@@ -112,12 +121,17 @@ const mongoose = {
     once: jest.fn(),
     off: jest.fn(),
     removeListener: jest.fn(),
+    close: jest.fn(() => Promise.resolve()),
     db: {
       admin: jest.fn(() => ({
         ping: jest.fn(() => Promise.resolve()),
       })),
     },
   },
+  connections: [{
+    readyState: 1,
+    close: jest.fn(() => Promise.resolve()),
+  }],
   model: jest.fn(() => mockModel),
   Schema,
   Types: Schema.Types,

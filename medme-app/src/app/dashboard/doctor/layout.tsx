@@ -57,7 +57,7 @@ export default function DoctorDashboardLayout({
   return (
     <div className="min-h-screen medical-gradient">
       <LazyDoctorNavigation />
-      <main className="lg:pl-64">
+      <main className="lg:ml-64 min-h-screen">
         {children}
       </main>
     </div>

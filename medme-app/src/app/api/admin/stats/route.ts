@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/auth/rbac';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import { User, UserRole, UserStatus } from '@/lib/models/User';
 import { Doctor, DoctorVerificationStatus } from '@/lib/models/Doctor';
 import { Patient } from '@/lib/models/Patient';
@@ -24,7 +24,7 @@ interface AdminStats {
 }
 
 async function getAdminStats(): Promise<AdminStats> {
-  const isConnected = await connectToDatabase();
+  const isConnected = await connectToMongoose();
   
   if (!isConnected) {
     // Return demo data if database is not available

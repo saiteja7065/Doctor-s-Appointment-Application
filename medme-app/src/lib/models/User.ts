@@ -140,6 +140,6 @@ UserSchema.index({ status: 1 });
 UserSchema.index({ createdAt: -1 });
 
 // Prevent model re-compilation during development
-export const User = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
+export const User = (mongoose.models?.User as mongoose.Model<IUser>) || mongoose.model<IUser>('User', UserSchema);
 
 export default User;

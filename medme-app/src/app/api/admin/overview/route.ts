@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import { User, UserRole } from '@/lib/models/User';
 import { Doctor } from '@/lib/models/Doctor';
 import { Patient } from '@/lib/models/Patient';
@@ -62,7 +62,7 @@ interface AdminOverviewData {
 export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Connect to database
-    const isConnected = await connectToDatabase();
+    const isConnected = await connectToMongoose();
     if (!isConnected) {
       // Return demo data for development
       const demoData: AdminOverviewData = {

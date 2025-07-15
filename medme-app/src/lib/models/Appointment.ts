@@ -312,5 +312,5 @@ AppointmentSchema.pre('save', function (next) {
 });
 
 // Export the model
-const Appointment = mongoose.models.Appointment || mongoose.model<IAppointment>('Appointment', AppointmentSchema);
+const Appointment = (mongoose.models?.Appointment as mongoose.Model<IAppointment>) || mongoose.model<IAppointment>('Appointment', AppointmentSchema);
 export default Appointment;

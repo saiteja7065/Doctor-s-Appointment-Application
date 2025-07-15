@@ -99,8 +99,8 @@ export default function DoctorNavigation() {
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 z-40 w-64 h-full glass-card border-r transition-transform duration-300 ease-in-out
-          lg:translate-x-0 lg:static lg:inset-0
+          fixed top-0 left-0 z-40 w-64 h-full glass-card border-r-0 transition-transform duration-300 ease-in-out
+          lg:translate-x-0 lg:fixed lg:inset-y-0
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
@@ -127,7 +127,7 @@ export default function DoctorNavigation() {
             />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">
-                Dr. {user?.firstName} {user?.lastName}
+                {user?.firstName?.startsWith('Dr.') ? `${user.firstName} ${user.lastName}` : `Dr. ${user?.firstName} ${user?.lastName}`}
               </p>
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>

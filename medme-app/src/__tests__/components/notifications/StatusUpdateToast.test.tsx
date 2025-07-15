@@ -157,7 +157,7 @@ describe('StatusUpdateToast', () => {
         type: 'appointment',
         status: 'success',
         title: 'Appointment Booked Successfully',
-        message: 'Your appointment with Dr. Dr. Smith on 2024-01-15 has been confirmed.',
+        message: 'Your appointment with Dr. Smith on 2024-01-15 has been confirmed.',
         actionUrl: '/dashboard/patient/appointments',
         actionLabel: 'View Appointment',
         duration: 6000,

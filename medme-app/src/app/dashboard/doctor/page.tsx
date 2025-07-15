@@ -144,7 +144,7 @@ export default function DoctorDashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
-              Welcome back, Dr. {user?.firstName}
+              Welcome back, {user?.firstName?.startsWith('Dr.') ? user.firstName : `Dr. ${user?.firstName}`}
             </h1>
             <p className="text-muted-foreground">
               Here's an overview of your medical practice

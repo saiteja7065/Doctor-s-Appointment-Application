@@ -171,7 +171,27 @@ jest.mock('@/lib/auth/rbac', () => ({
   },
 }))
 
-// Note: MongoDB and model mocks are handled in individual test files
+// MongoDB mocks
+jest.mock('@/lib/mongodb', () => ({
+  connectToDatabase: jest.fn(() => Promise.resolve(true)),
+  connectToMongoose: jest.fn(() => Promise.resolve(true)),
+  getDatabase: jest.fn(() => Promise.resolve({
+    collection: jest.fn(() => ({
+      find: jest.fn(() => ({
+        toArray: jest.fn(() => Promise.resolve([])),
+      })),
+      findOne: jest.fn(() => Promise.resolve(null)),
+      insertOne: jest.fn(() => Promise.resolve({ insertedId: 'mock-id' })),
+      updateOne: jest.fn(() => Promise.resolve({ modifiedCount: 1 })),
+    })),
+  })),
+  getCollection: jest.fn(() => Promise.resolve({
+    find: jest.fn(() => ({
+      toArray: jest.fn(() => Promise.resolve([])),
+    })),
+    findOne: jest.fn(() => Promise.resolve(null)),
+  })),
+}))
 
 // Mock Vonage SDK
 jest.mock('@vonage/server-sdk', () => ({
@@ -200,8 +220,13 @@ afterEach(() => {
 afterAll(async () => {
   // Close any open MongoDB connections
   const mongoose = require('mongoose')
-  if (mongoose.connection.readyState !== 0) {
-    await mongoose.connection.close()
+  try {
+    if (mongoose.connection && mongoose.connection.readyState !== 0) {
+      await mongoose.connection.close()
+    }
+  } catch (error) {
+    // Ignore connection close errors in tests
+    console.warn('Warning: Could not close mongoose connection:', error.message)
   }
 
   // Clear all timers

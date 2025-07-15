@@ -251,6 +251,6 @@ TransactionSchema.pre('save', function(next) {
 });
 
 // Prevent model re-compilation during development
-export const Transaction = mongoose.models.Transaction || mongoose.model<ITransaction>('Transaction', TransactionSchema);
+export const Transaction = (mongoose.models?.Transaction as mongoose.Model<ITransaction>) || mongoose.model<ITransaction>('Transaction', TransactionSchema);
 
 export default Transaction;

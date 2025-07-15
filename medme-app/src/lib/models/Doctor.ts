@@ -317,6 +317,6 @@ DoctorSchema.methods.updateRating = function(newRating: number) {
 };
 
 // Prevent model re-compilation during development
-export const Doctor = mongoose.models.Doctor || mongoose.model<IDoctor>('Doctor', DoctorSchema);
+export const Doctor = (mongoose.models?.Doctor as mongoose.Model<IDoctor>) || mongoose.model<IDoctor>('Doctor', DoctorSchema);
 
 export default Doctor;

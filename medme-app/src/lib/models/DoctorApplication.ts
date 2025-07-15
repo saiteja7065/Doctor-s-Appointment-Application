@@ -316,7 +316,7 @@ DoctorApplicationSchema.methods.addDocument = function(
 };
 
 // Prevent model re-compilation during development
-export const DoctorApplication = mongoose.models.DoctorApplication || 
+export const DoctorApplication = (mongoose.models?.DoctorApplication as mongoose.Model<IDoctorApplication>) ||
   mongoose.model<IDoctorApplication>('DoctorApplication', DoctorApplicationSchema);
 
 export default DoctorApplication;

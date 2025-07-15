@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/auth/rbac';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import { User } from '@/lib/models/User';
 import { Doctor, DoctorVerificationStatus } from '@/lib/models/Doctor';
 
@@ -33,7 +33,7 @@ interface DoctorApplicationResponse {
 }
 
 async function getDoctorApplications(): Promise<DoctorApplicationResponse[]> {
-  const isConnected = await connectToDatabase();
+  const isConnected = await connectToMongoose();
   
   if (!isConnected) {
     // Return demo data if database is not available
@@ -232,3 +232,118 @@ async function handler(userContext: any, request: NextRequest) {
 }
 
 export const GET = withAdminAuth(handler);
+
+async function updateDoctorStatus(userContext: any, request: NextRequest) {
+  try {
+    const isConnected = await connectToMongoose();
+    if (!isConnected) {
+      return NextResponse.json(
+        {
+          error: 'Database Error',
+          message: 'Database connection failed'
+        },
+        { status: 503 }
+      );
+    }
+
+    const data = await request.json();
+    const { applicationId, action, comments, requestedChanges } = data;
+
+    if (!applicationId || !action) {
+      return NextResponse.json(
+        {
+          error: 'Bad Request',
+          message: 'Application ID and action are required'
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate action
+    const validActions = ['approve', 'reject', 'suspend', 'request_info'];
+    if (!validActions.includes(action)) {
+      return NextResponse.json(
+        {
+          error: 'Bad Request',
+          message: 'Invalid action. Must be one of: approve, reject, suspend, request_info'
+        },
+        { status: 400 }
+      );
+    }
+
+    // Map action to verification status
+    const statusMap: Record<string, DoctorVerificationStatus> = {
+      'approve': DoctorVerificationStatus.APPROVED,
+      'reject': DoctorVerificationStatus.REJECTED,
+      'suspend': DoctorVerificationStatus.SUSPENDED,
+      'request_info': DoctorVerificationStatus.REQUIRES_ADDITIONAL_INFO
+    };
+
+    // Find the doctor application
+    const doctor = await Doctor.findById(applicationId);
+    if (!doctor) {
+      return NextResponse.json(
+        {
+          error: 'Not Found',
+          message: 'Doctor application not found'
+        },
+        { status: 404 }
+      );
+    }
+
+    // Update verification status
+    doctor.verificationStatus = statusMap[action];
+
+    // Add admin review
+    const adminReview = {
+      reviewedBy: userContext.userId,
+      reviewedAt: new Date(),
+      status: statusMap[action],
+      comments: comments || undefined,
+      requestedChanges: requestedChanges || undefined
+    };
+
+    if (!doctor.adminReviews) {
+      doctor.adminReviews = [];
+    }
+
+    doctor.adminReviews.push(adminReview);
+
+    // Save changes
+    await doctor.save();
+
+    // If approved, update the user status as well
+    if (action === 'approve') {
+      await User.findOneAndUpdate(
+        { _id: doctor.userId },
+        { status: UserStatus.ACTIVE }
+      );
+    }
+
+    // If rejected or suspended, update user status accordingly
+    if (action === 'reject' || action === 'suspend') {
+      await User.findOneAndUpdate(
+        { _id: doctor.userId },
+        { status: action === 'reject' ? UserStatus.INACTIVE : UserStatus.SUSPENDED }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Doctor application ${action}ed successfully`,
+      status: statusMap[action]
+    }, { status: 200 });
+
+  } catch (error) {
+    console.error('Error updating doctor status:', error);
+    return NextResponse.json(
+      {
+        error: 'Internal Server Error',
+        message: 'Failed to update doctor status'
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export const POST = withAdminAuth(updateDoctorStatus);

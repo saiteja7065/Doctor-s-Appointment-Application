@@ -253,6 +253,6 @@ PatientSchema.methods.addCredits = function(amount: number) {
 };
 
 // Prevent model re-compilation during development
-export const Patient = mongoose.models.Patient || mongoose.model<IPatient>('Patient', PatientSchema);
+export const Patient = (mongoose.models?.Patient as mongoose.Model<IPatient>) || mongoose.model<IPatient>('Patient', PatientSchema);
 
 export default Patient;

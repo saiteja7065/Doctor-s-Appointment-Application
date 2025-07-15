@@ -1,20 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-// Removed framer-motion for better performance - using CSS animations
-import { 
-  Shield, 
-  User, 
-  Calendar, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
+import {
+  Shield,
+  User,
+  Calendar,
+  CheckCircle,
+  XCircle,
+  Clock,
   AlertTriangle,
   Eye,
   FileText,
   ExternalLink,
   Search,
-  Filter
+  Filter,
+  Download,
+  MessageSquare,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +27,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-// Removed framer-motion import to fix compilation error
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
 
 interface DoctorApplication {
   _id: string;
@@ -30,15 +39,10 @@ interface DoctorApplication {
   firstName: string;
   lastName: string;
   email: string;
+  phoneNumber: string;
   specialty: string;
   licenseNumber: string;
   credentialUrl: string;
-  documentUrls?: {
-    medicalLicense?: string;
-    degreeCertificate?: string;
-    certifications?: string[];
-    additionalDocuments?: string[];
-  };
   yearsOfExperience: number;
   education: Array<{
     degree: string;
@@ -51,11 +55,50 @@ interface DoctorApplication {
     issueDate: string;
     expiryDate?: string;
   }>;
+  uploadedDocuments: Array<{
+    type: string;
+    fileName: string;
+    fileUrl: string;
+    uploadedAt: string;
+    fileSize: number;
+    mimeType: string;
+    verified?: boolean;
+    flagged?: boolean;
+    verificationComments?: string;
+  }>;
   bio: string;
   languages: string[];
-  verificationStatus: 'pending' | 'approved' | 'rejected' | 'suspended';
+  consultationFee: number;
+  status: 'pending' | 'approved' | 'rejected' | 'under_review' | 'requires_additional_info';
   submittedAt: string;
-  lastUpdated: string;
+  adminReviews: Array<{
+    reviewedBy: string;
+    reviewedAt: string;
+    status: string;
+    comments?: string;
+    requestedChanges?: string[];
+  }>;
+  additionalNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ApplicationStats {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  under_review: number;
+  requires_additional_info: number;
+}
+
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
 }
 
 // Helper functions
@@ -81,22 +124,52 @@ const getStatusIcon = (status: string) => {
 
 export default function AdminDoctorsPage() {
   const [applications, setApplications] = useState<DoctorApplication[]>([]);
+  const [selectedApplication, setSelectedApplication] = useState<DoctorApplication | null>(null);
+  const [stats, setStats] = useState<ApplicationStats>({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    under_review: 0,
+    requires_additional_info: 0
+  });
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [specialtyFilter, setSpecialtyFilter] = useState('all');
-  const [selectedApplication, setSelectedApplication] = useState<DoctorApplication | null>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewAction, setReviewAction] = useState<string>('');
+  const [reviewComments, setReviewComments] = useState('');
+  const [requestedChanges, setRequestedChanges] = useState<string[]>([]);
+  const [processingReview, setProcessingReview] = useState(false);
 
   useEffect(() => {
     fetchApplications();
-  }, []);
+  }, [pagination.currentPage, statusFilter, searchTerm]);
 
   const fetchApplications = async () => {
+    setLoading(true);
     try {
-      const response = await fetch('/api/admin/doctors');
+      const params = new URLSearchParams({
+        page: pagination.currentPage.toString(),
+        limit: pagination.itemsPerPage.toString(),
+        status: statusFilter,
+        search: searchTerm
+      });
+
+      const response = await fetch(`/api/admin/doctors?${params}`);
       if (response.ok) {
         const data = await response.json();
         setApplications(data.applications);
+        setStats(data.stats);
+        setPagination(data.pagination);
       } else {
         // Demo data fallback
         setApplications([
@@ -171,6 +244,63 @@ export default function AdminDoctorsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReviewApplication = (application: DoctorApplication, action: string) => {
+    setSelectedApplication(application);
+    setReviewAction(action);
+    setReviewComments('');
+    setRequestedChanges([]);
+    setIsReviewModalOpen(true);
+  };
+
+  const submitReview = async () => {
+    if (!selectedApplication || !reviewAction) return;
+
+    setProcessingReview(true);
+    try {
+      const response = await fetch('/api/admin/doctors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          applicationId: selectedApplication._id,
+          action: reviewAction,
+          comments: reviewComments,
+          requestedChanges: requestedChanges.filter(change => change.trim() !== '')
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(data.message);
+        setIsReviewModalOpen(false);
+        fetchApplications(); // Refresh the list
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to submit review');
+      }
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      toast.error('Failed to submit review');
+    } finally {
+      setProcessingReview(false);
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPagination(prev => ({ ...prev, currentPage: newPage }));
+  };
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    setPagination(prev => ({ ...prev, currentPage: 1 })); // Reset to first page
+  };
+
+  const handleStatusFilter = (value: string) => {
+    setStatusFilter(value);
+    setPagination(prev => ({ ...prev, currentPage: 1 })); // Reset to first page
   };
 
   const handleStatusUpdate = async (applicationId: string, newStatus: string, reason?: string) => {

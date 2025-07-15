@@ -387,11 +387,11 @@ WithdrawalRequestSchema.virtual('formattedAmount').get(function (this: IWithdraw
 });
 
 // Export models
-export const EarningTransaction = mongoose.models.EarningTransaction || 
+export const EarningTransaction = (mongoose.models?.EarningTransaction as mongoose.Model<IEarningTransaction>) ||
   mongoose.model<IEarningTransaction>('EarningTransaction', EarningTransactionSchema);
 
-export const WithdrawalRequest = mongoose.models.WithdrawalRequest || 
+export const WithdrawalRequest = (mongoose.models?.WithdrawalRequest as mongoose.Model<IWithdrawalRequest>) ||
   mongoose.model<IWithdrawalRequest>('WithdrawalRequest', WithdrawalRequestSchema);
 
-export const DoctorEarnings = mongoose.models.DoctorEarnings || 
+export const DoctorEarnings = (mongoose.models?.DoctorEarnings as mongoose.Model<IDoctorEarnings>) ||
   mongoose.model<IDoctorEarnings>('DoctorEarnings', DoctorEarningsSchema);

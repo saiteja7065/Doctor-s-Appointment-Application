@@ -225,6 +225,6 @@ NotificationSchema.statics.getUnreadCount = async function(clerkId: string) {
 };
 
 // Prevent model re-compilation during development
-export const Notification = mongoose.models.Notification || mongoose.model<INotification>('Notification', NotificationSchema);
+export const Notification = (mongoose.models?.Notification as mongoose.Model<INotification>) || mongoose.model<INotification>('Notification', NotificationSchema);
 
 export default Notification;

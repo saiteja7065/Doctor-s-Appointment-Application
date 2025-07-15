@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Stethoscope, User, Calendar, CreditCard } from 'lucide-react';
-import { LazyMotionDiv } from '@/components/ui/lazy-motion';
+// Removed LazyMotionDiv import - using regular divs for better performance
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
@@ -86,27 +86,18 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <LazyMotionDiv
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-8"
-        >
+        <div className="mb-8 animate-fade-in">
           <h1 className="text-4xl font-bold text-foreground mb-2">
             Dashboard
           </h1>
           <p className="text-xl text-muted-foreground">
             Welcome to your MedMe dashboard
           </p>
-        </LazyMotionDiv>
+        </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <LazyMotionDiv
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
+          <div className="animate-fade-in-delay-1">
             <Card className="glass-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -121,13 +112,9 @@ export default function DashboardPage() {
                 </p>
               </CardContent>
             </Card>
-          </LazyMotionDiv>
+          </div>
 
-          <LazyMotionDiv
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
+          <div className="animate-fade-in-delay-2">
             <Card className="glass-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -142,13 +129,9 @@ export default function DashboardPage() {
                 </p>
               </CardContent>
             </Card>
-          </LazyMotionDiv>
+          </div>
 
-          <LazyMotionDiv
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-          >
+          <div className="animate-fade-in-delay-3">
             <Card className="glass-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -163,13 +146,9 @@ export default function DashboardPage() {
                 </p>
               </CardContent>
             </Card>
-          </LazyMotionDiv>
+          </div>
 
-          <LazyMotionDiv
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          >
+          <div className="animate-fade-in-delay-4">
             <Card className="glass-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -184,15 +163,11 @@ export default function DashboardPage() {
                 </p>
               </CardContent>
             </Card>
-          </LazyMotionDiv>
+          </div>
         </div>
 
         {/* Quick Actions */}
-        <LazyMotionDiv
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
+        <div className="animate-fade-in-delay-5">
           <Card className="glass-card">
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
@@ -215,7 +190,7 @@ export default function DashboardPage() {
               </div>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
       </main>
     </div>
   );

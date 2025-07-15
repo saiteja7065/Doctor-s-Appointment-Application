@@ -53,6 +53,10 @@ export enum AuditAction {
   ADMIN_DOCTOR_SUSPEND = 'admin_doctor_suspend',
   ADMIN_WITHDRAWAL_APPROVE = 'admin_withdrawal_approve',
   ADMIN_WITHDRAWAL_REJECT = 'admin_withdrawal_reject',
+  ADMIN_VIEW_DOCTOR = 'admin_view_doctor',
+  ADMIN_UPDATE_DOCTOR = 'admin_update_doctor',
+  ADMIN_VIEW_SETTINGS = 'admin_view_settings',
+  ADMIN_UPDATE_SETTINGS = 'admin_update_settings',
   
   // Security actions
   SECURITY_LOGIN_FAILED = 'security_login_failed',

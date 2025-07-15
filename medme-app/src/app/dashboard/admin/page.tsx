@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 // Removed framer-motion for better performance - using CSS animations
 import { 
   Users, 
@@ -17,7 +18,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LazyMotionDiv } from '@/components/ui/lazy-motion';
+// Removed framer-motion dependency for better performance
 
 interface AdminStats {
   totalUsers: number;
@@ -32,6 +33,7 @@ interface AdminStats {
 }
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -114,11 +116,7 @@ export default function AdminDashboard() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <LazyMotionDiv
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <div className="animate-fade-in">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
@@ -127,7 +125,7 @@ export default function AdminDashboard() {
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <Badge 
+            <Badge
               variant={stats?.systemHealth === 'healthy' ? 'default' : 'destructive'}
               className="text-sm"
             >
@@ -135,16 +133,12 @@ export default function AdminDashboard() {
             </Badge>
           </div>
         </div>
-      </LazyMotionDiv>
+      </div>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Users */}
-        <LazyMotionDiv
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
+        <div className="animate-fade-in">
           <Card className="glass-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -157,14 +151,10 @@ export default function AdminDashboard() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
 
         {/* Pending Doctor Verifications */}
-        <LazyMotionDiv
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
+        <div className="animate-fade-in">
           <Card className="glass-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Doctors</CardTitle>
@@ -179,14 +169,10 @@ export default function AdminDashboard() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
 
         {/* Today's Appointments */}
-        <LazyMotionDiv
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
+        <div className="animate-fade-in">
           <Card className="glass-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Today's Appointments</CardTitle>
@@ -199,14 +185,10 @@ export default function AdminDashboard() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
 
         {/* Platform Revenue */}
-        <LazyMotionDiv
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
+        <div className="animate-fade-in">
           <Card className="glass-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Platform Revenue</CardTitle>
@@ -221,17 +203,13 @@ export default function AdminDashboard() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
       </div>
 
       {/* Action Items */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Urgent Actions */}
-        <LazyMotionDiv
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
+        <div className="animate-fade-in">
           <Card className="glass-card">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -250,11 +228,15 @@ export default function AdminDashboard() {
                     {stats?.pendingDoctors} applications pending review
                   </p>
                 </div>
-                <Button size="sm" variant="outline">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => router.push('/dashboard/admin/doctors')}
+                >
                   Review
                 </Button>
               </div>
-              
+
               <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <div>
                   <p className="font-medium text-sm">Withdrawal Requests</p>
@@ -262,20 +244,20 @@ export default function AdminDashboard() {
                     {stats?.pendingWithdrawals} requests awaiting processing
                   </p>
                 </div>
-                <Button size="sm" variant="outline">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => router.push('/dashboard/admin/financial')}
+                >
                   Process
                 </Button>
               </div>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
 
         {/* System Health */}
-        <LazyMotionDiv
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-        >
+        <div className="animate-fade-in">
           <Card className="glass-card">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -293,21 +275,21 @@ export default function AdminDashboard() {
                   Online
                 </Badge>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Payment System</span>
                 <Badge variant="default" className="bg-green-100 text-green-800">
                   Operational
                 </Badge>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Video Consultations</span>
                 <Badge variant="default" className="bg-green-100 text-green-800">
                   Active
                 </Badge>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Email Notifications</span>
                 <Badge variant="default" className="bg-green-100 text-green-800">
@@ -316,7 +298,7 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
       </div>
     </div>
   );

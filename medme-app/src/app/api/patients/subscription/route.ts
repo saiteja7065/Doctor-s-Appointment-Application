@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import { Patient } from '@/lib/models/Patient';
 import Appointment from '@/lib/models/Appointment';
 import { withPatientAuth } from '@/lib/auth/rbac';
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
   return withPatientAuth(async (userContext) => {
     try {
       // Connect to database
-      const isConnected = await connectToDatabase();
+      const isConnected = await connectToMongoose();
       if (!isConnected) {
         // Return demo subscription data
         const demoData: SubscriptionData = {
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Connect to database
-      const isConnected = await connectToDatabase();
+      const isConnected = await connectToMongoose();
       if (!isConnected) {
         // Return demo success response
         return NextResponse.json({
@@ -302,7 +302,7 @@ export async function PATCH(request: NextRequest) {
       }
 
       // Connect to database
-      const isConnected = await connectToDatabase();
+      const isConnected = await connectToMongoose();
       if (!isConnected) {
         return NextResponse.json(
           { error: 'Database connection failed' },

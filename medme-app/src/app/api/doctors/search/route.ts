@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import { Doctor } from '@/lib/models/Doctor';
 import { User } from '@/lib/models/User';
 import { MedicalSpecialty, DoctorVerificationStatus } from '@/lib/models/Doctor';
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Connect to database
-    const isConnected = await connectToDatabase();
+    const isConnected = await connectToMongoose();
     if (!isConnected) {
       // Return demo data when database is not available
       return NextResponse.json({
@@ -336,7 +336,7 @@ export async function GET(request: NextRequest) {
  */
 async function getAvailableFilters() {
   try {
-    const isConnected = await connectToDatabase();
+    const isConnected = await connectToMongoose();
     if (!isConnected) {
       return getDemoFilters();
     }
