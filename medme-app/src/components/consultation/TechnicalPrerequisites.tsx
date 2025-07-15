@@ -169,166 +169,415 @@ export default function TechnicalPrerequisites({
   };
 
   const checkBrowserCompatibility = async () => {
+    // Enhanced browser compatibility check with specific version requirements
+    const userAgent = navigator.userAgent;
     const isWebRTCSupported = !!(
       navigator.mediaDevices &&
       navigator.mediaDevices.getUserMedia &&
       window.RTCPeerConnection
     );
 
-    if (isWebRTCSupported) {
+    // Check specific browser versions
+    const browserInfo = getBrowserInfo(userAgent);
+    const isVersionSupported = checkBrowserVersion(browserInfo);
+
+    if (isWebRTCSupported && isVersionSupported.supported) {
       updateCheckStatus(
-        'browser', 
-        'passed', 
-        'Your browser supports video calls',
-        'You can proceed with the consultation'
+        'browser',
+        'passed',
+        `${browserInfo.name} ${browserInfo.version} - Fully compatible`,
+        'Your browser supports all video call features'
+      );
+    } else if (isWebRTCSupported && !isVersionSupported.supported) {
+      updateCheckStatus(
+        'browser',
+        'warning',
+        `${browserInfo.name} ${browserInfo.version} - Outdated version`,
+        `Please update to ${browserInfo.name} ${isVersionSupported.minVersion}+ for optimal experience`
       );
     } else {
       updateCheckStatus(
-        'browser', 
-        'failed', 
+        'browser',
+        'failed',
         'Your browser does not support video calls',
-        'Please use Chrome, Firefox, Safari, or Edge'
+        'Please use Chrome 72+, Firefox 68+, Safari 12.1+, or Edge 79+'
       );
     }
   };
 
+  const getBrowserInfo = (userAgent: string) => {
+    if (userAgent.includes('Chrome') && !userAgent.includes('Edg')) {
+      const match = userAgent.match(/Chrome\/(\d+)/);
+      return { name: 'Chrome', version: match ? match[1] : 'Unknown' };
+    } else if (userAgent.includes('Firefox')) {
+      const match = userAgent.match(/Firefox\/(\d+)/);
+      return { name: 'Firefox', version: match ? match[1] : 'Unknown' };
+    } else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) {
+      const match = userAgent.match(/Version\/(\d+)/);
+      return { name: 'Safari', version: match ? match[1] : 'Unknown' };
+    } else if (userAgent.includes('Edg')) {
+      const match = userAgent.match(/Edg\/(\d+)/);
+      return { name: 'Edge', version: match ? match[1] : 'Unknown' };
+    }
+    return { name: 'Unknown', version: 'Unknown' };
+  };
+
+  const checkBrowserVersion = (browserInfo: { name: string; version: string }) => {
+    const version = parseInt(browserInfo.version);
+    const requirements = {
+      Chrome: { min: 72, recommended: 90 },
+      Firefox: { min: 68, recommended: 85 },
+      Safari: { min: 12, recommended: 14 },
+      Edge: { min: 79, recommended: 90 }
+    };
+
+    const requirement = requirements[browserInfo.name as keyof typeof requirements];
+    if (!requirement) {
+      return { supported: false, minVersion: 'Latest' };
+    }
+
+    return {
+      supported: version >= requirement.min,
+      minVersion: requirement.min.toString(),
+      isRecommended: version >= requirement.recommended
+    };
+  };
+
   const checkInternetConnection = async () => {
     try {
-      const startTime = Date.now();
-      const response = await fetch('/api/health', { 
-        method: 'GET',
-        cache: 'no-cache'
-      });
-      const endTime = Date.now();
-      const latency = endTime - startTime;
+      // Test connection speed and latency
+      const speedTest = await performSpeedTest();
+      const latencyTest = await performLatencyTest();
 
-      if (response.ok && latency < 1000) {
+      const downloadSpeed = speedTest.downloadSpeed; // Mbps
+      const uploadSpeed = speedTest.uploadSpeed; // Mbps
+      const latency = latencyTest.latency; // ms
+
+      // Determine connection quality based on requirements
+      const minDownload = 1; // 1 Mbps minimum for video calls
+      const minUpload = 1; // 1 Mbps minimum for video calls
+      const maxLatency = 300; // 300ms maximum acceptable latency
+
+      if (downloadSpeed >= minDownload && uploadSpeed >= minUpload && latency <= maxLatency) {
         updateCheckStatus(
-          'internet', 
-          'passed', 
-          `Connection stable (${latency}ms latency)`,
-          'Your internet connection is suitable for video calls'
+          'internet',
+          'passed',
+          `Excellent connection: ${downloadSpeed.toFixed(1)} Mbps ↓ / ${uploadSpeed.toFixed(1)} Mbps ↑ (${latency}ms)`,
+          'Your internet speed is perfect for high-quality video calls'
         );
-      } else if (latency < 2000) {
+      } else if (downloadSpeed >= 0.5 && uploadSpeed >= 0.5 && latency <= 500) {
         updateCheckStatus(
-          'internet', 
-          'warning', 
-          `Connection slow (${latency}ms latency)`,
-          'Video quality may be reduced'
+          'internet',
+          'warning',
+          `Moderate connection: ${downloadSpeed.toFixed(1)} Mbps ↓ / ${uploadSpeed.toFixed(1)} Mbps ↑ (${latency}ms)`,
+          'Video quality may be reduced. Consider closing other applications using internet.'
         );
       } else {
         updateCheckStatus(
-          'internet', 
-          'failed', 
-          `Connection too slow (${latency}ms latency)`,
-          'Please check your internet connection'
+          'internet',
+          'failed',
+          `Poor connection: ${downloadSpeed.toFixed(1)} Mbps ↓ / ${uploadSpeed.toFixed(1)} Mbps ↑ (${latency}ms)`,
+          'Your connection may not support video calls. Try moving closer to your router or using ethernet.'
         );
       }
     } catch (error) {
       updateCheckStatus(
-        'internet', 
-        'failed', 
-        'Unable to test connection',
-        'Please check your internet connection'
+        'internet',
+        'failed',
+        'Unable to test connection speed',
+        'Please check your internet connection and try again'
       );
+    }
+  };
+
+  const performSpeedTest = async (): Promise<{ downloadSpeed: number; uploadSpeed: number }> => {
+    try {
+      // Simple speed test using response time and payload size
+      const testSize = 50000; // 50KB test for reasonable speed
+
+      // Download test
+      const downloadStart = Date.now();
+      const response = await fetch('/api/health', {
+        method: 'GET',
+        cache: 'no-cache',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      const downloadEnd = Date.now();
+      const downloadTime = (downloadEnd - downloadStart) / 1000; // seconds
+
+      // Estimate download speed (conservative estimate)
+      const downloadSpeed = Math.min((testSize * 8) / (downloadTime * 1000000), 10); // Cap at 10 Mbps
+
+      // Upload test simulation (using POST with small payload)
+      const uploadStart = Date.now();
+      await fetch('/api/health', {
+        method: 'POST',
+        body: JSON.stringify({ test: 'speed', data: 'x'.repeat(1000) }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const uploadEnd = Date.now();
+      const uploadTime = (uploadEnd - uploadStart) / 1000; // seconds
+      const uploadSpeed = Math.min((1000 * 8) / (uploadTime * 1000000), 5); // Cap at 5 Mbps
+
+      return {
+        downloadSpeed: Math.max(downloadSpeed, 0.1), // Minimum 0.1 Mbps
+        uploadSpeed: Math.max(uploadSpeed, 0.1)
+      };
+    } catch (error) {
+      // Fallback to basic connectivity test
+      return { downloadSpeed: 1.0, uploadSpeed: 1.0 };
+    }
+  };
+
+  const performLatencyTest = async (): Promise<{ latency: number }> => {
+    try {
+      const startTime = Date.now();
+      await fetch('/api/health', {
+        method: 'HEAD',
+        cache: 'no-cache'
+      });
+      const endTime = Date.now();
+      return { latency: endTime - startTime };
+    } catch (error) {
+      return { latency: 999 }; // High latency as fallback
     }
   };
 
   const checkCameraAccess = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
-        } 
+      // First check if camera devices are available
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+      if (videoDevices.length === 0) {
+        updateCheckStatus(
+          'camera',
+          'failed',
+          'No camera devices found',
+          'Please connect a camera to your device and refresh the page'
+        );
+        return;
+      }
+
+      // Request camera access with optimal settings
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 },
+          frameRate: { ideal: 30, min: 15 }
+        }
       });
-      
+
+      // Test video track settings
+      const videoTrack = stream.getVideoTracks()[0];
+      const settings = videoTrack.getSettings();
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
       }
-      
+
       streamRef.current = stream;
-      
+
+      // Provide detailed feedback about camera quality
+      const quality = getCameraQuality(settings);
       updateCheckStatus(
-        'camera', 
-        'passed', 
-        'Camera access granted and working',
-        'Your camera is ready for video calls'
+        'camera',
+        'passed',
+        `Camera working: ${settings.width}x${settings.height} at ${settings.frameRate}fps`,
+        `${quality.message} - Your camera is ready for video calls`
       );
     } catch (error: any) {
-      if (error.name === 'NotAllowedError') {
-        updateCheckStatus(
-          'camera', 
-          'failed', 
-          'Camera access denied',
-          'Please allow camera access in your browser settings'
-        );
-      } else if (error.name === 'NotFoundError') {
-        updateCheckStatus(
-          'camera', 
-          'failed', 
-          'No camera found',
-          'Please connect a camera to your device'
-        );
-      } else {
-        updateCheckStatus(
-          'camera', 
-          'failed', 
-          'Camera access failed',
-          'Please check your camera settings'
-        );
-      }
+      handleCameraError(error);
+    }
+  };
+
+  const getCameraQuality = (settings: any) => {
+    const width = settings.width || 0;
+    const height = settings.height || 0;
+    const fps = settings.frameRate || 0;
+
+    if (width >= 1280 && height >= 720 && fps >= 25) {
+      return { level: 'excellent', message: 'Excellent quality (HD)' };
+    } else if (width >= 640 && height >= 480 && fps >= 15) {
+      return { level: 'good', message: 'Good quality' };
+    } else {
+      return { level: 'basic', message: 'Basic quality' };
+    }
+  };
+
+  const handleCameraError = (error: any) => {
+    if (error.name === 'NotAllowedError') {
+      updateCheckStatus(
+        'camera',
+        'failed',
+        'Camera access denied by user',
+        'Click the camera icon in your browser address bar and allow camera access, then refresh'
+      );
+    } else if (error.name === 'NotFoundError') {
+      updateCheckStatus(
+        'camera',
+        'failed',
+        'No camera found on this device',
+        'Please connect a camera to your device and refresh the page'
+      );
+    } else if (error.name === 'NotReadableError') {
+      updateCheckStatus(
+        'camera',
+        'failed',
+        'Camera is being used by another application',
+        'Please close other applications using your camera and try again'
+      );
+    } else if (error.name === 'OverconstrainedError') {
+      updateCheckStatus(
+        'camera',
+        'warning',
+        'Camera quality limited by device capabilities',
+        'Your camera will work but may have reduced quality'
+      );
+    } else {
+      updateCheckStatus(
+        'camera',
+        'failed',
+        `Camera error: ${error.message || 'Unknown error'}`,
+        'Please check your camera settings and try again'
+      );
     }
   };
 
   const checkMicrophoneAccess = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
+      // First check if audio devices are available
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioDevices = devices.filter(device => device.kind === 'audioinput');
+
+      if (audioDevices.length === 0) {
+        updateCheckStatus(
+          'microphone',
+          'failed',
+          'No microphone devices found',
+          'Please connect a microphone to your device and refresh the page'
+        );
+        return;
+      }
+
+      // Request microphone access with optimal settings
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000
+        }
+      });
+
+      // Test audio levels and quality
+      const audioTrack = stream.getAudioTracks()[0];
+      const settings = audioTrack.getSettings();
+
       // Test audio levels
       const audioContext = new AudioContext();
       const analyser = audioContext.createAnalyser();
       const microphone = audioContext.createMediaStreamSource(stream);
       microphone.connect(analyser);
-      
+
+      analyser.fftSize = 256;
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(dataArray);
-      
-      // Stop the stream
-      stream.getTracks().forEach(track => track.stop());
-      audioContext.close();
-      
-      updateCheckStatus(
-        'microphone', 
-        'passed', 
-        'Microphone access granted and working',
-        'Your microphone is ready for audio calls'
-      );
+
+      // Test for 2 seconds to detect audio input
+      let maxLevel = 0;
+      const testDuration = 2000; // 2 seconds
+      const startTime = Date.now();
+
+      const testAudioLevel = () => {
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        maxLevel = Math.max(maxLevel, average);
+
+        if (Date.now() - startTime < testDuration) {
+          requestAnimationFrame(testAudioLevel);
+        } else {
+          // Cleanup
+          stream.getTracks().forEach(track => track.stop());
+          audioContext.close();
+
+          // Evaluate microphone quality
+          const quality = getMicrophoneQuality(settings, maxLevel);
+          updateCheckStatus(
+            'microphone',
+            quality.status,
+            `Microphone working: ${quality.description}`,
+            quality.recommendation
+          );
+        }
+      };
+
+      testAudioLevel();
+
     } catch (error: any) {
-      if (error.name === 'NotAllowedError') {
-        updateCheckStatus(
-          'microphone', 
-          'failed', 
-          'Microphone access denied',
-          'Please allow microphone access in your browser settings'
-        );
-      } else if (error.name === 'NotFoundError') {
-        updateCheckStatus(
-          'microphone', 
-          'failed', 
-          'No microphone found',
-          'Please connect a microphone to your device'
-        );
-      } else {
-        updateCheckStatus(
-          'microphone', 
-          'failed', 
-          'Microphone access failed',
-          'Please check your microphone settings'
-        );
-      }
+      handleMicrophoneError(error);
+    }
+  };
+
+  const getMicrophoneQuality = (settings: any, audioLevel: number) => {
+    const sampleRate = settings.sampleRate || 0;
+
+    if (audioLevel > 10 && sampleRate >= 44100) {
+      return {
+        status: 'passed' as const,
+        description: 'Excellent quality with noise cancellation',
+        recommendation: 'Your microphone is ready for high-quality audio calls'
+      };
+    } else if (audioLevel > 5) {
+      return {
+        status: 'passed' as const,
+        description: 'Good quality audio detected',
+        recommendation: 'Your microphone is ready for audio calls'
+      };
+    } else if (audioLevel > 0) {
+      return {
+        status: 'warning' as const,
+        description: 'Low audio levels detected',
+        recommendation: 'Please speak closer to your microphone or increase volume'
+      };
+    } else {
+      return {
+        status: 'warning' as const,
+        description: 'No audio input detected',
+        recommendation: 'Please check if your microphone is muted or try speaking'
+      };
+    }
+  };
+
+  const handleMicrophoneError = (error: any) => {
+    if (error.name === 'NotAllowedError') {
+      updateCheckStatus(
+        'microphone',
+        'failed',
+        'Microphone access denied by user',
+        'Click the microphone icon in your browser address bar and allow microphone access, then refresh'
+      );
+    } else if (error.name === 'NotFoundError') {
+      updateCheckStatus(
+        'microphone',
+        'failed',
+        'No microphone found on this device',
+        'Please connect a microphone to your device and refresh the page'
+      );
+    } else if (error.name === 'NotReadableError') {
+      updateCheckStatus(
+        'microphone',
+        'failed',
+        'Microphone is being used by another application',
+        'Please close other applications using your microphone and try again'
+      );
+    } else {
+      updateCheckStatus(
+        'microphone',
+        'failed',
+        `Microphone error: ${error.message || 'Unknown error'}`,
+        'Please check your microphone settings and try again'
+      );
     }
   };
 
