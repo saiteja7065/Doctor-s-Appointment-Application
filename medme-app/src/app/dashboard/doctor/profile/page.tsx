@@ -142,7 +142,7 @@ export default function DoctorProfilePage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="space-y-6">
         <div className="animate-pulse">
           <div className="h-8 bg-muted rounded w-1/4 mb-6"></div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -163,7 +163,7 @@ export default function DoctorProfilePage() {
   if (!profile) return null;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="animate-fade-in-up">
         <div className="flex items-center justify-between">

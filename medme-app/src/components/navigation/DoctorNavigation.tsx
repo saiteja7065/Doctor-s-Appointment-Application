@@ -99,7 +99,7 @@ export default function DoctorNavigation() {
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 z-40 w-64 h-full glass-card border-r-0 transition-transform duration-300 ease-in-out
+          fixed top-0 left-0 z-40 w-60 h-full glass-card border-r-0 transition-transform duration-300 ease-in-out
           lg:translate-x-0 lg:fixed lg:inset-y-0
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}

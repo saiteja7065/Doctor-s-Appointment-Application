@@ -7,7 +7,7 @@ const DoctorNavigation = lazy(() => import('./DoctorNavigation'));
 
 // Lightweight loading fallback
 const NavigationSkeleton = () => (
-  <div className="fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-border lg:block hidden">
+  <div className="fixed inset-y-0 left-0 z-50 w-60 bg-sidebar border-r border-border lg:block hidden">
     <div className="flex h-full flex-col">
       {/* Header skeleton */}
       <div className="flex h-16 items-center border-b border-border px-6">
