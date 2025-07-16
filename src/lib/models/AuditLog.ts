@@ -259,6 +259,6 @@ AuditLogSchema.statics.createLog = async function(logData: Partial<IAuditLog>) {
 };
 
 // Prevent model re-compilation during development
-export const AuditLog = mongoose.models.AuditLog || mongoose.model<IAuditLog>('AuditLog', AuditLogSchema);
+export const AuditLog = (mongoose.models?.AuditLog as mongoose.Model<IAuditLog>) || mongoose.model<IAuditLog>('AuditLog', AuditLogSchema);
 
 export default AuditLog;
