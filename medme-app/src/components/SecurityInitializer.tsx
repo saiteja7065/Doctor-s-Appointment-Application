@@ -16,7 +16,8 @@ function validateClientEnvironment() {
   ];
 
   for (const envVar of requiredClientVars) {
-    if (!process.env[envVar]) {
+    const value = process.env[envVar];
+    if (!value || value === 'undefined' || value === '') {
       errors.push(`Missing required client environment variable: ${envVar}`);
     }
   }
@@ -119,14 +120,19 @@ export function SecurityInitializer() {
         const clientValidation = validateClientEnvironment();
 
         if (clientValidation.errors.length > 0) {
-          console.error('❌ Client Security Configuration Errors:');
-          clientValidation.errors.forEach(error => {
-            console.error(`  - ${error}`);
-          });
-
-          // In development, show warnings but continue
-          // In production, this should halt the application
-          if (process.env.NODE_ENV === 'production') {
+          // In development, show as warnings instead of errors
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ Client Security Configuration Issues (Development Mode):');
+            clientValidation.errors.forEach(error => {
+              console.warn(`  - ${error}`);
+            });
+            console.warn('⚠️ These will be critical errors in production');
+          } else {
+            // In production, show as errors and halt
+            console.error('❌ Client Security Configuration Errors:');
+            clientValidation.errors.forEach(error => {
+              console.error(`  - ${error}`);
+            });
             throw new Error('Critical client security configuration errors detected');
           }
         }
