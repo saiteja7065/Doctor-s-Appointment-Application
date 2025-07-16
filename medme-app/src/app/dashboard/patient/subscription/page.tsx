@@ -156,28 +156,29 @@ export default function SubscriptionPage() {
           if (data.availablePlans) {
             setAvailablePlans(data.availablePlans);
           }
-        } else {
-          // Fallback to demo data if API fails
-          const mockTransactions: Transaction[] = [
-            {
-              id: '1',
-              type: 'usage',
-              description: 'Video consultation with Dr. Sarah Johnson',
-              credits: -2,
-              date: '2024-01-10',
-              status: 'completed'
-            },
-            {
-              id: '2',
-              type: 'purchase',
-              description: 'Welcome bonus credits',
-              credits: 2,
-              date: '2024-01-01',
-              status: 'completed'
-            }
-          ];
+          } else {
+            // Fallback to demo data if API fails
+            const mockTransactions: Transaction[] = [
+              {
+                id: '1',
+                type: 'usage',
+                description: 'Video consultation with Dr. Sarah Johnson',
+                credits: -2,
+                date: '2024-01-10',
+                status: 'completed'
+              },
+              {
+                id: '2',
+                type: 'purchase',
+                description: 'Welcome bonus credits',
+                credits: 2,
+                date: '2024-01-01',
+                status: 'completed'
+              }
+            ];
 
-          setTransactions(mockTransactions);
+            setTransactions(mockTransactions);
+          }
         }
       } catch (error) {
         console.error('Error loading subscription data:', error);

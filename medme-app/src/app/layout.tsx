@@ -4,16 +4,22 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { Toaster } from 'sonner';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { PWAInstaller } from '@/components/PWAInstaller';
+import { PerformanceOptimizer } from '@/components/PerformanceOptimizer';
+import { SecurityInitializer } from '@/components/SecurityInitializer';
 import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  preload: false, // Only preload primary font
 });
 
 export const metadata: Metadata = {
@@ -22,7 +28,13 @@ export const metadata: Metadata = {
   keywords: "doctor, appointment, telemedicine, healthcare, consultation",
   authors: [{ name: "MedMe Team" }],
   manifest: '/manifest.json',
-  metadataBase: new URL('http://localhost:3000'),
+  metadataBase: new URL(process.env.NODE_ENV === 'production' ? 'https://medme.app' : 'http://localhost:3001'),
+  other: {
+    // Optimize for performance
+    'theme-color': '#0891b2',
+    'apple-mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-status-bar-style': 'default',
+  },
 };
 
 export const viewport: Viewport = {
@@ -41,6 +53,8 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
+          <SecurityInitializer />
+          <PerformanceOptimizer />
           <NotificationProvider>
             {children}
             <Toaster

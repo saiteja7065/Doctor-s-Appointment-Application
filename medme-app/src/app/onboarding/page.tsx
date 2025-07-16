@@ -43,26 +43,43 @@ export default function OnboardingPage() {
         const text = await response.text();
         console.log('📡 Onboarding: Raw response:', text);
 
-        if (!text) {
-          console.log('⚠️ Onboarding: Empty response received');
-          // Handle empty response as success
-          const data = { message: 'Profile created successfully' };
-          console.log('✅ Onboarding: Profile created successfully (empty response):', data);
+        let data = { message: 'Profile created successfully' };
+        if (text) {
+          try {
+            data = JSON.parse(text);
+            console.log('✅ Onboarding: Profile created successfully:', data);
+          } catch (parseError) {
+            console.warn('⚠️ Onboarding: Could not parse response JSON:', parseError);
+          }
         } else {
-          const data = JSON.parse(text);
-          console.log('✅ Onboarding: Profile created successfully:', data);
+          console.log('⚠️ Onboarding: Empty response received');
         }
 
-        // Redirect based on role
-        if (selectedRole === UserRole.PATIENT) {
-          console.log('🏥 Onboarding: Redirecting to patient dashboard');
-          router.push('/dashboard/patient');
-        } else if (selectedRole === UserRole.DOCTOR) {
-          console.log('👨‍⚕️ Onboarding: Redirecting to doctor onboarding');
-          router.push('/onboarding/doctor');
-        } else if (selectedRole === UserRole.ADMIN) {
-          console.log('👑 Onboarding: Redirecting to admin dashboard');
-          router.push('/dashboard/admin');
+        // Handle existing user case
+        if (data.existing && data.user) {
+          console.log('ℹ️ Onboarding: User already exists, redirecting based on existing role:', data.user.role);
+          // Redirect based on existing role
+          if (data.user.role === UserRole.PATIENT) {
+            router.push('/dashboard/patient');
+          } else if (data.user.role === UserRole.DOCTOR) {
+            router.push('/doctor/dashboard');
+          } else if (data.user.role === UserRole.ADMIN) {
+            router.push('/dashboard/admin');
+          } else {
+            router.push('/dashboard');
+          }
+        } else {
+          // New user - redirect based on selected role
+          if (selectedRole === UserRole.PATIENT) {
+            console.log('🏥 Onboarding: Redirecting to patient dashboard');
+            router.push('/dashboard/patient');
+          } else if (selectedRole === UserRole.DOCTOR) {
+            console.log('👨‍⚕️ Onboarding: Redirecting to doctor onboarding');
+            router.push('/onboarding/doctor');
+          } else if (selectedRole === UserRole.ADMIN) {
+            console.log('👑 Onboarding: Redirecting to admin dashboard');
+            router.push('/dashboard/admin');
+          }
         }
       } else {
         // Handle error response safely
@@ -82,13 +99,19 @@ export default function OnboardingPage() {
 
         console.error('❌ Onboarding: Failed to create profile:', errorMessage);
 
-        // Even if there's an error, try to redirect to prevent user from being stuck
-        if (selectedRole === UserRole.PATIENT) {
-          router.push('/dashboard/patient');
-        } else if (selectedRole === UserRole.DOCTOR) {
-          router.push('/onboarding/doctor');
-        } else if (selectedRole === UserRole.ADMIN) {
-          router.push('/dashboard/admin');
+        // Handle specific error cases
+        if (response.status === 409 && errorMessage.includes('already exists')) {
+          console.log('ℹ️ Onboarding: User already exists, redirecting to dashboard...');
+          router.push('/dashboard');
+        } else {
+          // Even if there's an error, try to redirect to prevent user from being stuck
+          if (selectedRole === UserRole.PATIENT) {
+            router.push('/dashboard/patient');
+          } else if (selectedRole === UserRole.DOCTOR) {
+            router.push('/onboarding/doctor');
+          } else if (selectedRole === UserRole.ADMIN) {
+            router.push('/dashboard/admin');
+          }
         }
       }
     } catch (error) {

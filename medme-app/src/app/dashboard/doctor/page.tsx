@@ -30,7 +30,7 @@ interface DoctorStats {
 }
 
 export default function DoctorDashboardPage() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const [stats, setStats] = useState<DoctorStats>({
     totalAppointments: 0,
     todayAppointments: 0,
@@ -41,6 +41,17 @@ export default function DoctorDashboardPage() {
     verificationStatus: 'pending'
   });
   const [isLoading, setIsLoading] = useState(true);
+
+  // Don't render until Clerk is loaded
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     const fetchDoctorStats = async () => {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { connectToMongoose } from '@/lib/mongodb';
 import { Doctor } from '@/lib/models/Doctor';
 import { User } from '@/lib/models/User';
@@ -361,12 +362,12 @@ async function getAvailableFilters() {
     // Get unique specialties with timeout
     const specialties = await Doctor.distinct('specialty', {
       verificationStatus: DoctorVerificationStatus.APPROVED,
-    }).maxTimeMS(3000);
+    });
 
     // Get unique languages with timeout
     const languages = await Doctor.distinct('languages', {
       verificationStatus: DoctorVerificationStatus.APPROVED,
-    }).maxTimeMS(3000);
+    });
 
     // Get fee range with timeout
     const feeStats = await Doctor.aggregate([
@@ -379,7 +380,7 @@ async function getAvailableFilters() {
           avgFee: { $avg: '$consultationFee' },
         },
       },
-    ]).maxTimeMS(3000);
+    ]);
 
     // Get experience range with timeout
     const experienceStats = await Doctor.aggregate([
@@ -392,7 +393,7 @@ async function getAvailableFilters() {
           avgExperience: { $avg: '$yearsOfExperience' },
         },
       },
-    ]).maxTimeMS(3000);
+    ]);
 
     return {
       specialties: specialties.map(specialty => ({

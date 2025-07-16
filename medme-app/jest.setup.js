@@ -133,6 +133,124 @@ jest.mock('@/lib/models/User', () => ({
   },
 }))
 
+// Mock Patient model
+jest.mock('@/lib/models/Patient', () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn(),
+    findById: jest.fn(),
+    create: jest.fn(),
+    updateOne: jest.fn(),
+    deleteOne: jest.fn(),
+    find: jest.fn(() => ({
+      exec: jest.fn(() => Promise.resolve([])),
+    })),
+  },
+  Patient: {
+    findOne: jest.fn(),
+    findById: jest.fn(),
+    create: jest.fn(),
+    updateOne: jest.fn(),
+    deleteOne: jest.fn(),
+    find: jest.fn(() => ({
+      exec: jest.fn(() => Promise.resolve([])),
+    })),
+  },
+}))
+
+// Mock Doctor model
+jest.mock('@/lib/models/Doctor', () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn(),
+    findById: jest.fn(),
+    create: jest.fn(),
+    updateOne: jest.fn(),
+    deleteOne: jest.fn(),
+    find: jest.fn(() => ({
+      exec: jest.fn(() => Promise.resolve([])),
+    })),
+    aggregate: jest.fn(() => Promise.resolve([])),
+  },
+  Doctor: {
+    findOne: jest.fn(),
+    findById: jest.fn(),
+    create: jest.fn(),
+    updateOne: jest.fn(),
+    deleteOne: jest.fn(),
+    find: jest.fn(() => ({
+      exec: jest.fn(() => Promise.resolve([])),
+    })),
+    aggregate: jest.fn(() => Promise.resolve([])),
+  },
+  MedicalSpecialty: {
+    CARDIOLOGY: 'cardiology',
+    DERMATOLOGY: 'dermatology',
+    PEDIATRICS: 'pediatrics',
+    ORTHOPEDICS: 'orthopedics',
+    NEUROLOGY: 'neurology',
+    PSYCHIATRY: 'psychiatry',
+    ONCOLOGY: 'oncology',
+    RADIOLOGY: 'radiology',
+    ANESTHESIOLOGY: 'anesthesiology',
+    EMERGENCY_MEDICINE: 'emergency_medicine',
+    FAMILY_MEDICINE: 'family_medicine',
+    INTERNAL_MEDICINE: 'internal_medicine',
+    OBSTETRICS_GYNECOLOGY: 'obstetrics_gynecology',
+    OPHTHALMOLOGY: 'ophthalmology',
+    OTOLARYNGOLOGY: 'otolaryngology',
+    PATHOLOGY: 'pathology',
+    PHYSICAL_MEDICINE: 'physical_medicine',
+    PLASTIC_SURGERY: 'plastic_surgery',
+    SURGERY: 'surgery',
+    UROLOGY: 'urology',
+  },
+  DoctorVerificationStatus: {
+    PENDING: 'pending',
+    APPROVED: 'approved',
+    REJECTED: 'rejected',
+    SUSPENDED: 'suspended',
+  },
+}))
+
+// Mock DoctorApplication model
+jest.mock('@/lib/models/DoctorApplication', () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn(),
+    findById: jest.fn(),
+    create: jest.fn(),
+    updateOne: jest.fn(),
+    deleteOne: jest.fn(),
+    find: jest.fn(() => ({
+      exec: jest.fn(() => Promise.resolve([])),
+    })),
+  },
+  DoctorApplication: {
+    findOne: jest.fn(),
+    findById: jest.fn(),
+    create: jest.fn(),
+    updateOne: jest.fn(),
+    deleteOne: jest.fn(),
+    find: jest.fn(() => ({
+      exec: jest.fn(() => Promise.resolve([])),
+    })),
+  },
+  ApplicationStatus: {
+    PENDING: 'pending',
+    UNDER_REVIEW: 'under_review',
+    APPROVED: 'approved',
+    REJECTED: 'rejected',
+    REQUIRES_ADDITIONAL_INFO: 'requires_additional_info',
+  },
+  DocumentType: {
+    MEDICAL_LICENSE: 'medical_license',
+    DEGREE_CERTIFICATE: 'degree_certificate',
+    CERTIFICATION: 'certification',
+    ADDITIONAL_DOCUMENT: 'additional_document',
+  },
+}))
+
 // Mock RBAC functions
 jest.mock('@/lib/auth/rbac', () => ({
   withRBAC: jest.fn((config, handler) => handler),
@@ -173,8 +291,25 @@ jest.mock('@/lib/auth/rbac', () => ({
 
 // MongoDB mocks
 jest.mock('@/lib/mongodb', () => ({
+  __esModule: true,
+  default: jest.fn(() => Promise.resolve({
+    db: jest.fn(() => ({
+      collection: jest.fn(() => ({
+        find: jest.fn(() => ({
+          toArray: jest.fn(() => Promise.resolve([])),
+        })),
+        findOne: jest.fn(() => Promise.resolve(null)),
+        insertOne: jest.fn(() => Promise.resolve({ insertedId: 'mock-id' })),
+        updateOne: jest.fn(() => Promise.resolve({ modifiedCount: 1 })),
+      })),
+    })),
+  })),
   connectToDatabase: jest.fn(() => Promise.resolve(true)),
   connectToMongoose: jest.fn(() => Promise.resolve(true)),
+  isMongooseConnected: jest.fn(() => true),
+  getMongooseConnection: jest.fn(() => ({
+    readyState: 1,
+  })),
   getDatabase: jest.fn(() => Promise.resolve({
     collection: jest.fn(() => ({
       find: jest.fn(() => ({
@@ -191,6 +326,94 @@ jest.mock('@/lib/mongodb', () => ({
     })),
     findOne: jest.fn(() => Promise.resolve(null)),
   })),
+  COLLECTIONS: {
+    USERS: 'users',
+    DOCTORS: 'doctors',
+    PATIENTS: 'patients',
+    APPOINTMENTS: 'appointments',
+    SUBSCRIPTIONS: 'subscriptions',
+    TRANSACTIONS: 'transactions',
+    WITHDRAWAL_REQUESTS: 'withdrawal_requests',
+    AUDIT_LOGS: 'audit_logs',
+  },
+}))
+
+// Mock Mongoose
+const mockObjectId = jest.fn();
+const mockSchemaTypes = {
+  ObjectId: mockObjectId,
+  String: String,
+  Number: Number,
+  Boolean: Boolean,
+  Date: Date,
+  Array: Array,
+  Mixed: Object,
+};
+
+const mockSchema = jest.fn().mockImplementation((definition, options) => {
+  const schema = {
+    definition,
+    options,
+    pre: jest.fn(),
+    post: jest.fn(),
+    virtual: jest.fn(() => ({
+      get: jest.fn(),
+      set: jest.fn(),
+    })),
+    index: jest.fn(),
+    methods: {},
+    statics: {},
+    Types: mockSchemaTypes,
+  };
+
+  // Store the call for test verification
+  mockSchema.mock.calls.push([definition, options]);
+
+  return schema;
+});
+
+mockSchema.Types = mockSchemaTypes;
+
+const mockModel = jest.fn(() => ({
+  find: jest.fn(() => ({
+    exec: jest.fn(() => Promise.resolve([])),
+  })),
+  findOne: jest.fn(() => ({
+    exec: jest.fn(() => Promise.resolve(null)),
+  })),
+  findById: jest.fn(() => ({
+    exec: jest.fn(() => Promise.resolve(null)),
+  })),
+  create: jest.fn(() => Promise.resolve({ _id: 'mock-id' })),
+  updateOne: jest.fn(() => Promise.resolve({ modifiedCount: 1 })),
+  deleteOne: jest.fn(() => Promise.resolve({ deletedCount: 1 })),
+  aggregate: jest.fn(() => Promise.resolve([])),
+}));
+
+jest.mock('mongoose', () => ({
+  __esModule: true,
+  default: {
+    connect: jest.fn(() => Promise.resolve()),
+    disconnect: jest.fn(() => Promise.resolve()),
+    connection: {
+      readyState: 1,
+      close: jest.fn(() => Promise.resolve()),
+    },
+    connections: [{ readyState: 1 }],
+    model: mockModel,
+    models: {},
+    Schema: mockSchema,
+  },
+  Schema: mockSchema,
+  connect: jest.fn(() => Promise.resolve()),
+  disconnect: jest.fn(() => Promise.resolve()),
+  connection: {
+    readyState: 1,
+    close: jest.fn(() => Promise.resolve()),
+  },
+  connections: [{ readyState: 1 }],
+  model: mockModel,
+  models: {},
 }))
 
 // Mock Vonage SDK

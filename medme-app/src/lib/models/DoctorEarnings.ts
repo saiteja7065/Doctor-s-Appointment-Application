@@ -109,7 +109,6 @@ const EarningTransactionSchema = new Schema<IEarningTransaction>(
     clerkId: {
       type: String,
       required: true,
-      index: true,
     },
     type: {
       type: String,
@@ -171,7 +170,6 @@ const WithdrawalRequestSchema = new Schema<IWithdrawalRequest>(
     clerkId: {
       type: String,
       required: true,
-      index: true,
     },
     requestId: {
       type: String,

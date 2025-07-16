@@ -17,24 +17,24 @@ export default function SignUpPage() {
         </div>
 
         <div className="glass-card p-6 rounded-lg animate-scale-in" style={{ animationDelay: '0.1s' }}>
-          <SignUp 
+          <SignUp
             appearance={{
               elements: {
-                formButtonPrimary: 
+                formButtonPrimary:
                   'bg-primary hover:bg-primary/90 text-primary-foreground transition-colors',
                 card: 'bg-transparent shadow-none',
                 headerTitle: 'text-foreground',
                 headerSubtitle: 'text-muted-foreground',
-                socialButtonsBlockButton: 
+                socialButtonsBlockButton:
                   'border-border hover:bg-accent transition-colors',
-                formFieldInput: 
+                formFieldInput:
                   'border-border bg-background focus:ring-primary',
                 footerActionLink: 'text-primary hover:text-primary/80',
               },
             }}
             routing="path"
             path="/sign-up"
-            redirectUrl="/onboarding"
+            fallbackRedirectUrl="/onboarding"
             signInUrl="/sign-in"
           />
         </div>

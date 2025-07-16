@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -462,7 +462,7 @@ export default function EnhancedBookingWizard({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <BOOKING_STEPS[currentStep].icon className="h-5 w-5" />
+            {React.createElement(BOOKING_STEPS[currentStep].icon, { className: "h-5 w-5" })}
             <span>{BOOKING_STEPS[currentStep].title}</span>
           </CardTitle>
         </CardHeader>

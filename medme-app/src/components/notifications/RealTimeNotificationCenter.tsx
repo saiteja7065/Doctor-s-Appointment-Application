@@ -378,7 +378,7 @@ function NotificationCenterComponent({
                     </div>
                   );
                 })}
-              </div>
+              </AnimatePresence>
             </div>
           </ScrollArea>
         )}

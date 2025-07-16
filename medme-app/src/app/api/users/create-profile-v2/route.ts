@@ -89,9 +89,22 @@ export async function POST(request: NextRequest) {
     // Check if user already exists
     const existingUser = await db.collection(COLLECTIONS.USERS).findOne({ clerkId });
     if (existingUser) {
+      console.log('ℹ️ User already exists, returning existing user data');
       return NextResponse.json(
-        { error: 'User profile already exists' },
-        { status: 409 }
+        {
+          message: 'User profile already exists',
+          user: {
+            id: existingUser._id.toString(),
+            clerkId: existingUser.clerkId,
+            email: existingUser.email,
+            firstName: existingUser.firstName,
+            lastName: existingUser.lastName,
+            role: existingUser.role,
+            status: existingUser.status,
+          },
+          existing: true
+        },
+        { status: 200 } // Return 200 instead of 409 for existing users
       );
     }
 

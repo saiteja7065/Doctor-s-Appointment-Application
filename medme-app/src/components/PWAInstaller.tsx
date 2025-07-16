@@ -15,15 +15,21 @@ export function PWAInstaller() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // Register service worker
-    if ('serviceWorker' in navigator) {
+    // Register service worker with better error handling
+    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       navigator.serviceWorker
         .register('/sw.js')
         .then((registration) => {
-          console.log('Service Worker registered successfully:', registration);
+          // Only log in development
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Service Worker registered successfully:', registration);
+          }
         })
         .catch((error) => {
-          console.error('Service Worker registration failed:', error);
+          // Only log errors in development
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Service Worker registration failed:', error);
+          }
         });
     }
 
@@ -46,7 +52,9 @@ export function PWAInstaller() {
 
     // Listen for app installed event
     const handleAppInstalled = () => {
-      console.log('PWA was installed');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('PWA was installed');
+      }
       setIsInstalled(true);
       setShowInstallBanner(false);
       setDeferredPrompt(null);
@@ -67,11 +75,13 @@ export function PWAInstaller() {
     try {
       await deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      
-      if (outcome === 'accepted') {
-        console.log('User accepted the install prompt');
-      } else {
-        console.log('User dismissed the install prompt');
+
+      if (process.env.NODE_ENV === 'development') {
+        if (outcome === 'accepted') {
+          console.log('User accepted the install prompt');
+        } else {
+          console.log('User dismissed the install prompt');
+        }
       }
       
       setDeferredPrompt(null);

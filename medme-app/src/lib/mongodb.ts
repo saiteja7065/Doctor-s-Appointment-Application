@@ -133,14 +133,13 @@ export async function getCollection(collectionName: string) {
 // Mongoose connection configuration
 const mongooseOptions = {
   maxPoolSize: 10,
-  serverSelectionTimeoutMS: 5000, // Reduced timeout for faster fallback
-  socketTimeoutMS: 10000, // Reduced timeout for faster fallback
+  serverSelectionTimeoutMS: 15000, // Increased timeout for Atlas
+  socketTimeoutMS: 45000, // Increased timeout for Atlas
   maxIdleTimeMS: 30000,
   retryWrites: true,
-  connectTimeoutMS: 5000, // Reduced timeout for faster fallback
+  connectTimeoutMS: 15000, // Increased timeout for Atlas
   heartbeatFrequencyMS: 10000,
   bufferCommands: false, // Disable buffering to fail fast
-  bufferMaxEntries: 0, // Disable buffering to fail fast
   family: 4, // Use IPv4
   // Let MongoDB driver handle SSL/TLS automatically for Atlas
 };
@@ -187,4 +186,14 @@ export async function connectToMongoose(): Promise<boolean> {
 
   console.error(`❌ Failed to connect to MongoDB with Mongoose after ${maxRetries} attempts. Last error: ${lastError?.message}`);
   return false;
+}
+
+// Helper function to check mongoose connection status
+export function isMongooseConnected(): boolean {
+  return mongoose.connections[0].readyState === 1;
+}
+
+// Helper function to get mongoose connection
+export function getMongooseConnection() {
+  return mongoose.connection;
 }

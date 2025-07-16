@@ -3,6 +3,22 @@ const CACHE_NAME = 'medme-v1.0.0';
 const STATIC_CACHE_NAME = 'medme-static-v1.0.0';
 const DYNAMIC_CACHE_NAME = 'medme-dynamic-v1.0.0';
 
+// Development mode detection
+const isDevelopment = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
+
+// Conditional logging
+function log(...args) {
+  if (isDevelopment) {
+    console.log('Service Worker:', ...args);
+  }
+}
+
+function logError(...args) {
+  if (isDevelopment) {
+    console.error('Service Worker:', ...args);
+  }
+}
+
 // Assets to cache immediately
 const STATIC_ASSETS = [
   '/',
@@ -22,42 +38,42 @@ const API_CACHE_PATTERNS = [
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-  console.log('Service Worker: Installing...');
-  
+  log('Installing...');
+
   event.waitUntil(
     caches.open(STATIC_CACHE_NAME)
       .then((cache) => {
-        console.log('Service Worker: Caching static assets');
+        log('Caching static assets');
         return cache.addAll(STATIC_ASSETS);
       })
       .then(() => {
-        console.log('Service Worker: Static assets cached');
+        log('Static assets cached');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('Service Worker: Failed to cache static assets', error);
+        logError('Failed to cache static assets', error);
       })
   );
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker: Activating...');
-  
+  log('Activating...');
+
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== STATIC_CACHE_NAME && cacheName !== DYNAMIC_CACHE_NAME) {
-              console.log('Service Worker: Deleting old cache', cacheName);
+              log('Deleting old cache', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('Service Worker: Activated');
+        log('Activated');
         return self.clients.claim();
       })
   );
@@ -107,7 +123,7 @@ async function networkFirstStrategy(request) {
     
     return networkResponse;
   } catch (error) {
-    console.log('Service Worker: Network failed, trying cache', error);
+    log('Network failed, trying cache', error);
     
     const cachedResponse = await caches.match(request);
     if (cachedResponse) {
@@ -141,7 +157,7 @@ async function cacheFirstStrategy(request) {
     
     return networkResponse;
   } catch (error) {
-    console.error('Service Worker: Failed to fetch asset', request.url, error);
+    logError('Failed to fetch asset', request.url, error);
     throw error;
   }
 }
@@ -228,4 +244,4 @@ self.addEventListener('notificationclick', (event) => {
   }
 });
 
-console.log('Service Worker: Loaded successfully');
+log('Loaded successfully');

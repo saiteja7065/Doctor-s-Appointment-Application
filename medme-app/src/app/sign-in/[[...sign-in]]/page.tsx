@@ -34,7 +34,7 @@ export default function SignInPage() {
             }}
             routing="path"
             path="/sign-in"
-            redirectUrl="/dashboard"
+            fallbackRedirectUrl="/dashboard"
             signUpUrl="/sign-up"
           />
         </div>

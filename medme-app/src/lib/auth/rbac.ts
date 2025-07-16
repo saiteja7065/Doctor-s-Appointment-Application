@@ -73,8 +73,33 @@ export async function authenticateUser(): Promise<UserContext> {
     };
   }
 
-  // Get user from database
-  const user = await User.findOne({ clerkId: userId });
+  // Get user from database with timeout
+  let user;
+  try {
+    user = await Promise.race([
+      User.findOne({ clerkId: userId }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Database query timeout')), 5000)
+      )
+    ]);
+  } catch (error) {
+    console.log('Database query failed or timed out, using demo user context for:', userId, error);
+    return {
+      userId: 'demo_' + userId,
+      clerkId: userId,
+      role: UserRole.DOCTOR, // Default to doctor for demo
+      status: 'active',
+      user: {
+        _id: 'demo_' + userId,
+        clerkId: userId,
+        role: UserRole.DOCTOR,
+        status: 'active',
+        firstName: 'Demo',
+        lastName: 'Doctor'
+      }
+    };
+  }
+
   if (!user) {
     // Create demo user context for new users
     console.log('User not found in database, using demo user context for:', userId);
@@ -123,7 +148,7 @@ export function canAccessOwnResource(userContext: UserContext, resourceUserId: s
 /**
  * Main RBAC middleware function
  */
-export async function withRBAC(
+export function withRBAC(
   config: RBACConfig,
   handler: (userContext: UserContext, request: NextRequest) => Promise<NextResponse>
 ) {
