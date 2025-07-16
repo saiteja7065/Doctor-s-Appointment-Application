@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clerk Direct Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Clerk Direct Test</h1>
+        <p>This page tests Clerk authentication directly without Next.js interference.</p>
+    </div>
+
+    <div class="container">
+        <h2>📋 Configuration Check</h2>
+        <div id="config-status">Checking configuration...</div>
+    </div>
+
+    <div class="container">
+        <h2>🔌 Clerk Connection Test</h2>
+        <div id="connection-status">Testing connection...</div>
+        <button onclick="testClerkAPI()">Test Clerk API</button>
+        <button onclick="testClerkJS()">Test Clerk JS</button>
+    </div>
+
+    <div class="container">
+        <h2>📊 Results</h2>
+        <pre id="results">Waiting for tests...</pre>
+    </div>
+
+    <script>
+        // Configuration
+        const CLERK_PUBLISHABLE_KEY = 'pk_test_c21pbGluZy1kcmFrZS05Ni5jbGVyay5hY2NvdW50cy5kZXYk';
+        const APP_URL = 'http://localhost:3000';
+        
+        let results = {
+            timestamp: new Date().toISOString(),
+            tests: {}
+        };
+
+        function updateResults() {
+            document.getElementById('results').textContent = JSON.stringify(results, null, 2);
+        }
+
+        function addStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            element.appendChild(statusDiv);
+        }
+
+        // Test 1: Configuration Check
+        function checkConfiguration() {
+            const configElement = document.getElementById('config-status');
+            configElement.innerHTML = '';
+
+            if (CLERK_PUBLISHABLE_KEY) {
+                addStatus('config-status', '✅ Publishable key found', 'success');
+                
+                // Decode domain from key
+                try {
+                    const keyParts = CLERK_PUBLISHABLE_KEY.split('_');
+                    if (keyParts.length >= 3) {
+                        const encodedDomain = keyParts[2];
+                        const clerkDomain = atob(encodedDomain);
+                        addStatus('config-status', `🏠 Clerk domain: ${clerkDomain}`, 'info');
+                        
+                        const currentDomain = window.location.host;
+                        if (currentDomain === clerkDomain.replace('$', '')) {
+                            addStatus('config-status', '✅ Domain matches', 'success');
+                        } else {
+                            addStatus('config-status', `❌ Domain mismatch: Current=${currentDomain}, Clerk=${clerkDomain}`, 'error');
+                        }
+                    }
+                } catch (e) {
+                    addStatus('config-status', '⚠️ Could not decode domain from key', 'warning');
+                }
+            } else {
+                addStatus('config-status', '❌ No publishable key found', 'error');
+            }
+
+            results.tests.configuration = {
+                hasKey: !!CLERK_PUBLISHABLE_KEY,
+                keyPrefix: CLERK_PUBLISHABLE_KEY ? CLERK_PUBLISHABLE_KEY.substring(0, 20) + '...' : null,
+                appUrl: APP_URL,
+                currentUrl: window.location.href
+            };
+            updateResults();
+        }
+
+        // Test 2: Clerk API Test
+        async function testClerkAPI() {
+            const connectionElement = document.getElementById('connection-status');
+            addStatus('connection-status', '🔄 Testing Clerk API...', 'info');
+
+            try {
+                // Test Clerk's public API
+                const response = await fetch(`https://api.clerk.com/v1/public/environment`, {
+                    headers: {
+                        'Authorization': `Bearer ${CLERK_PUBLISHABLE_KEY}`,
+                    },
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    addStatus('connection-status', '✅ Clerk API accessible', 'success');
+                    results.tests.clerkAPI = { status: 'success', data };
+                } else {
+                    addStatus('connection-status', `❌ Clerk API error: ${response.status} ${response.statusText}`, 'error');
+                    results.tests.clerkAPI = { status: 'error', error: `${response.status} ${response.statusText}` };
+                }
+            } catch (error) {
+                addStatus('connection-status', `❌ Clerk API failed: ${error.message}`, 'error');
+                results.tests.clerkAPI = { status: 'error', error: error.message };
+            }
+            updateResults();
+        }
+
+        // Test 3: Clerk JS Test
+        function testClerkJS() {
+            addStatus('connection-status', '🔄 Testing Clerk JS loading...', 'info');
+
+            // Try to load Clerk JS
+            const script = document.createElement('script');
+            script.src = `https://js.clerk.com/v4/clerk.js`;
+            script.onload = function() {
+                addStatus('connection-status', '✅ Clerk JS loaded successfully', 'success');
+                
+                // Try to initialize Clerk
+                if (window.Clerk) {
+                    window.Clerk.load({
+                        publishableKey: CLERK_PUBLISHABLE_KEY,
+                    }).then(() => {
+                        addStatus('connection-status', '✅ Clerk initialized successfully', 'success');
+                        results.tests.clerkJS = { status: 'success', initialized: true };
+                        updateResults();
+                    }).catch((error) => {
+                        addStatus('connection-status', `❌ Clerk initialization failed: ${error.message}`, 'error');
+                        results.tests.clerkJS = { status: 'error', error: error.message };
+                        updateResults();
+                    });
+                } else {
+                    addStatus('connection-status', '❌ Clerk object not available', 'error');
+                    results.tests.clerkJS = { status: 'error', error: 'Clerk object not available' };
+                    updateResults();
+                }
+            };
+            script.onerror = function() {
+                addStatus('connection-status', '❌ Failed to load Clerk JS', 'error');
+                results.tests.clerkJS = { status: 'error', error: 'Failed to load script' };
+                updateResults();
+            };
+            document.head.appendChild(script);
+        }
+
+        // Run initial tests
+        checkConfiguration();
+    </script>
+</body>
+</html>

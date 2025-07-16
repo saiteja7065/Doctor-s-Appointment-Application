@@ -27,10 +27,22 @@ export async function POST(request: NextRequest) {
     console.log('📝 Request body:', body);
     const { role, firstName, lastName, email } = body;
 
-    // Validate required fields
-    if (!role || !firstName || !lastName || !email) {
+    // Validate required fields with better error messages
+    const missingFields = [];
+    if (!role) missingFields.push('role');
+    if (!firstName) missingFields.push('firstName');
+    if (!lastName) missingFields.push('lastName');
+    if (!email) missingFields.push('email');
+
+    if (missingFields.length > 0) {
+      console.log('❌ Missing fields:', missingFields);
+      console.log('📝 Received data:', { role, firstName, lastName, email });
       return NextResponse.json(
-        { error: 'Missing required fields: role, firstName, lastName, email' },
+        {
+          error: 'Missing required fields',
+          missingFields,
+          received: { role: !!role, firstName: !!firstName, lastName: !!lastName, email: !!email }
+        },
         { status: 400 }
       );
     }

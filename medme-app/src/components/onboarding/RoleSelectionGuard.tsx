@@ -98,17 +98,22 @@ export function RoleSelectionGuard({
 
     setIsSelecting(true);
     try {
+      // Prepare user data with fallbacks
+      const userData = {
+        role: selectedRole,
+        firstName: user.firstName || user.fullName?.split(' ')[0] || 'User',
+        lastName: user.lastName || user.fullName?.split(' ').slice(1).join(' ') || 'Name',
+        email: user.emailAddresses[0]?.emailAddress || user.primaryEmailAddress?.emailAddress,
+      };
+
+      console.log('🚀 Onboarding: Sending user data:', userData);
+
       const response = await fetch('/api/users/onboarding', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          role: selectedRole,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.emailAddresses[0]?.emailAddress,
-        }),
+        body: JSON.stringify(userData),
       });
 
       if (response.ok) {
@@ -151,13 +156,18 @@ export function RoleSelectionGuard({
 
         try {
           const errorText = await response.text();
+          console.log('❌ Onboarding: Error response text:', JSON.stringify(errorText));
           if (errorText) {
             errorData = JSON.parse(errorText);
             errorMessage = errorData.message || errorData.error || 'Failed to set user role';
+            console.log('❌ Onboarding: Parsed error data:', errorData);
           }
         } catch (parseError) {
+          console.log('❌ Onboarding: Failed to parse error response:', parseError);
           errorMessage = `Server error (${response.status})`;
         }
+
+        console.log('❌ Onboarding: Failed to create profile:', JSON.stringify(errorMessage));
 
         // Handle specific error cases
         if (response.status === 409 && (errorMessage.includes('already exists') || errorMessage.includes('User already exists'))) {
