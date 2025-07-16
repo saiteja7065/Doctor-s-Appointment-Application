@@ -216,7 +216,6 @@ const AuditLogSchema = new Schema<IAuditLog>(
     timestamp: {
       type: Date,
       default: Date.now,
-      index: true,
     },
   },
   {

@@ -32,10 +32,9 @@ interface BookingRequest {
  * POST /api/appointments/book
  * Book a new appointment with a doctor
  */
-export async function POST(request: NextRequest) {
-  return withPatientAuth(async (userContext) => {
+async function postHandler(userContext: any, req: NextRequest) {
     try {
-      const body: BookingRequest = await request.json();
+      const body: BookingRequest = await req.json();
       const { doctorId, appointmentDate, appointmentTime, topic, description, consultationType, timezone } = body;
 
       // Get patient timezone (from request or auto-detect)
@@ -95,8 +94,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Find doctor
-      const doctor = await Doctor.findById(doctorId);
+      // Find doctor with populated user data
+      const doctor = await Doctor.findById(doctorId).populate('userId');
       if (!doctor) {
         return NextResponse.json(
           { error: 'Doctor not found' },
@@ -192,7 +191,7 @@ export async function POST(request: NextRequest) {
           doctorId: doctor._id,
           patientName: `${user.firstName} ${user.lastName}`,
           patientEmail: user.email,
-          doctorName: `${doctor.firstName} ${doctor.lastName}`,
+          doctorName: `${(doctor.userId as any)?.firstName || 'Dr.'} ${(doctor.userId as any)?.lastName || 'Unknown'}`,
           appointmentDate,
           appointmentTime: appointmentTimeUTC, // Store in UTC
           appointmentTimeLocal: appointmentTime, // Store original local time
@@ -216,8 +215,8 @@ export async function POST(request: NextRequest) {
           AuditAction.APPOINTMENT_CREATE,
           userContext.clerkId,
           savedAppointment._id.toString(),
-          `Patient ${user.firstName} ${user.lastName} booked appointment with Dr. ${doctor.firstName} ${doctor.lastName} for ${appointmentDate} at ${appointmentTime}`,
-          request,
+          `Patient ${user.firstName} ${user.lastName} booked appointment with Dr. ${(doctor.userId as any)?.firstName || 'Unknown'} ${(doctor.userId as any)?.lastName || 'Doctor'} for ${appointmentDate} at ${appointmentTime}`,
+          req,
           {
             doctorId: doctor._id.toString(),
             patientId: patient._id.toString(),
@@ -238,7 +237,7 @@ export async function POST(request: NextRequest) {
           savedAppointment._id.toString(),
           consultationFee,
           `Credits deducted for appointment booking: ${consultationFee} credits`,
-          request,
+          req,
           {
             previousBalance: patient.creditBalance + consultationFee,
             newBalance: patient.creditBalance,
@@ -251,7 +250,7 @@ export async function POST(request: NextRequest) {
           await sendAppointmentConfirmation({
             patientEmail: user.email,
             patientName: `${user.firstName} ${user.lastName}`,
-            doctorName: `${doctor.firstName} ${doctor.lastName}`,
+            doctorName: `${(doctor.userId as any)?.firstName || 'Dr.'} ${(doctor.userId as any)?.lastName || 'Unknown'}`,
             specialty: doctor.specialty,
             appointmentDate: new Date(appointmentDateTime).toLocaleDateString(),
             appointmentTime: new Date(appointmentDateTime).toLocaleTimeString(),
@@ -268,7 +267,7 @@ export async function POST(request: NextRequest) {
           await sendCreditDeductionNotification({
             patientEmail: user.email,
             patientName: `${user.firstName} ${user.lastName}`,
-            doctorName: `${doctor.firstName} ${doctor.lastName}`,
+            doctorName: `${(doctor.userId as any)?.firstName || 'Dr.'} ${(doctor.userId as any)?.lastName || 'Unknown'}`,
             appointmentDate: new Date(appointmentDateTime).toLocaleDateString(),
             creditsUsed: consultationFee,
             remainingCredits: patient.creditBalance,
@@ -298,14 +297,14 @@ export async function POST(request: NextRequest) {
             'patient',
             NotificationType.APPOINTMENT_BOOKED,
             'Appointment Confirmed',
-            `Your appointment with Dr. ${doctor.firstName} ${doctor.lastName} on ${new Date(appointmentDateTime).toLocaleDateString()} has been confirmed.`,
+            `Your appointment with Dr. ${(doctor.userId as any)?.firstName || 'Unknown'} ${(doctor.userId as any)?.lastName || 'Doctor'} on ${new Date(appointmentDateTime).toLocaleDateString()} has been confirmed.`,
             {
               priority: NotificationPriority.HIGH,
               actionUrl: '/dashboard/patient/appointments',
               actionLabel: 'View Appointment',
               metadata: {
                 appointmentId: savedAppointment._id.toString(),
-                doctorName: `${doctor.firstName} ${doctor.lastName}`,
+                doctorName: `${(doctor.userId as any)?.firstName || 'Dr.'} ${(doctor.userId as any)?.lastName || 'Unknown'}`,
                 appointmentDate: new Date(appointmentDateTime).toLocaleDateString(),
                 creditsUsed: consultationFee,
                 remainingCredits: patient.creditBalance
@@ -352,12 +351,10 @@ export async function POST(request: NextRequest) {
           console.error('Failed to send appointment confirmation notification:', notificationError);
         }
 
-        // Update doctor's earnings (if doctor model has earnings tracking)
-        if (doctor.totalEarnings !== undefined) {
-          doctor.totalEarnings += consultationFee;
-          doctor.totalAppointments = (doctor.totalAppointments || 0) + 1;
-          await doctor.save();
-        }
+        // Update doctor's earnings and consultation count
+        doctor.totalEarnings = (doctor.totalEarnings || 0) + consultationFee;
+        doctor.totalConsultations = (doctor.totalConsultations || 0) + 1;
+        await doctor.save();
 
         return NextResponse.json(
           {
@@ -366,7 +363,7 @@ export async function POST(request: NextRequest) {
             appointment: {
               id: savedAppointment._id,
               doctorId: doctor._id,
-              doctorName: `${doctor.firstName} ${doctor.lastName}`,
+              doctorName: `${(doctor.userId as any)?.firstName || 'Dr.'} ${(doctor.userId as any)?.lastName || 'Unknown'}`,
               patientId: patient._id,
               appointmentDate,
               appointmentTime,
@@ -400,17 +397,17 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
 }
+
+export const POST = withPatientAuth(postHandler);
 
 /**
  * GET /api/appointments/book
  * Get available time slots for a doctor on a specific date
  */
-export async function GET(request: NextRequest) {
-  return withPatientAuth(async (userContext) => {
+async function getHandler(userContext: any, req: NextRequest) {
     try {
-      const { searchParams } = new URL(request.url);
+      const { searchParams } = new URL(req.url);
       const doctorId = searchParams.get('doctorId');
       const date = searchParams.get('date');
       const timezone = searchParams.get('timezone') || 'UTC';
@@ -529,8 +526,9 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
 }
+
+export const GET = withPatientAuth(getHandler);
 
 // Helper function to convert UTC time to local timezone
 function convertUTCTimeToLocal(utcTime: string, targetTimezone: string, date: Date): string {

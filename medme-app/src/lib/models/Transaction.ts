@@ -116,8 +116,7 @@ const TransactionSchema = new Schema<ITransaction>(
 TransactionSchema.index({ userId: 1, createdAt: -1 });
 TransactionSchema.index({ clerkId: 1, createdAt: -1 });
 TransactionSchema.index({ type: 1, status: 1 });
-TransactionSchema.index({ stripePaymentIntentId: 1 }, { sparse: true });
-TransactionSchema.index({ stripeSessionId: 1 }, { sparse: true });
+// Note: stripePaymentIntentId and stripeSessionId already have sparse indexes from field definition
 
 // Virtual to format amount for display
 TransactionSchema.virtual('formattedAmount').get(function (this: ITransaction) {

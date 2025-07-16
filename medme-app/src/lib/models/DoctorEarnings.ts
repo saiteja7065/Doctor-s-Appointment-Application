@@ -339,10 +339,10 @@ EarningTransactionSchema.index({ appointmentId: 1 });
 WithdrawalRequestSchema.index({ doctorId: 1, createdAt: -1 });
 WithdrawalRequestSchema.index({ clerkId: 1, status: 1 });
 WithdrawalRequestSchema.index({ status: 1, requestDate: -1 });
-WithdrawalRequestSchema.index({ requestId: 1 });
+// Note: requestId already has unique index from field definition
 
 DoctorEarningsSchema.index({ doctorId: 1 });
-DoctorEarningsSchema.index({ clerkId: 1 });
+// Note: clerkId already has unique index from field definition
 DoctorEarningsSchema.index({ totalEarnings: -1 });
 DoctorEarningsSchema.index({ lastCalculatedAt: 1 });
 
