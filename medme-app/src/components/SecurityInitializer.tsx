@@ -3,75 +3,6 @@
 import { useEffect } from 'react';
 
 /**
- * Security Initializer Component
- * Validates client-side security configuration and initializes security systems on app startup
- */
-export function SecurityInitializer() {
-  useEffect(() => {
-    // Initialize client-side security configuration
-    const initSecurity = async () => {
-      try {
-        console.log('🔒 Initializing MedMe Client Security Systems...');
-
-        // 1. Validate client-side environment variables
-        const clientValidation = validateClientEnvironment();
-
-        if (clientValidation.errors.length > 0) {
-          console.error('❌ Client Security Configuration Errors:');
-          clientValidation.errors.forEach(error => {
-            console.error(`  - ${error}`);
-          });
-
-          // In development, show warnings but continue
-          // In production, this should halt the application
-          if (process.env.NODE_ENV === 'production') {
-            throw new Error('Critical client security configuration errors detected');
-          }
-        }
-
-        if (clientValidation.warnings.length > 0) {
-          console.warn('⚠️ Client Security Configuration Warnings:');
-          clientValidation.warnings.forEach(warning => {
-            console.warn(`  - ${warning}`);
-          });
-        }
-
-        // 2. Initialize client-side security features
-        initializeClientSecurity();
-
-        console.log('✅ Client security systems initialized successfully');
-
-      } catch (error) {
-        console.error('❌ Client security initialization failed:', error);
-
-        // In production, this should trigger an alert
-        if (process.env.NODE_ENV === 'production') {
-          // Send alert to monitoring system
-          try {
-            await fetch('/api/security/alert', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                type: 'CLIENT_SECURITY_INIT_FAILURE',
-                message: error instanceof Error ? error.message : 'Unknown error',
-                timestamp: new Date().toISOString(),
-              }),
-            });
-          } catch (alertError) {
-            console.error('Failed to send security alert:', alertError);
-          }
-        }
-      }
-    };
-    
-    initSecurity();
-  }, []);
-  
-  // This component doesn't render anything
-  return null;
-}
-
-/**
  * Validate client-side environment variables
  */
 function validateClientEnvironment() {
@@ -171,4 +102,73 @@ function initializeClientSecurity() {
   }
 
   console.log('🔒 Client-side security features initialized');
+}
+
+/**
+ * Security Initializer Component
+ * Validates client-side security configuration and initializes security systems on app startup
+ */
+export function SecurityInitializer() {
+  useEffect(() => {
+    // Initialize client-side security configuration
+    const initSecurity = async () => {
+      try {
+        console.log('🔒 Initializing MedMe Client Security Systems...');
+
+        // 1. Validate client-side environment variables
+        const clientValidation = validateClientEnvironment();
+
+        if (clientValidation.errors.length > 0) {
+          console.error('❌ Client Security Configuration Errors:');
+          clientValidation.errors.forEach(error => {
+            console.error(`  - ${error}`);
+          });
+
+          // In development, show warnings but continue
+          // In production, this should halt the application
+          if (process.env.NODE_ENV === 'production') {
+            throw new Error('Critical client security configuration errors detected');
+          }
+        }
+
+        if (clientValidation.warnings.length > 0) {
+          console.warn('⚠️ Client Security Configuration Warnings:');
+          clientValidation.warnings.forEach(warning => {
+            console.warn(`  - ${warning}`);
+          });
+        }
+
+        // 2. Initialize client-side security features
+        initializeClientSecurity();
+
+        console.log('✅ Client security systems initialized successfully');
+
+      } catch (error) {
+        console.error('❌ Client security initialization failed:', error);
+
+        // In production, this should trigger an alert
+        if (process.env.NODE_ENV === 'production') {
+          // Send alert to monitoring system
+          try {
+            await fetch('/api/security/alert', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'CLIENT_SECURITY_INIT_FAILURE',
+                message: error instanceof Error ? error.message : 'Unknown error',
+                timestamp: new Date().toISOString(),
+              }),
+            });
+          } catch (alertError) {
+            console.error('Failed to send security alert:', alertError);
+          }
+        }
+      }
+    };
+    
+    initSecurity();
+  }, []);
+  
+  // This component doesn't render anything
+  return null;
 }
