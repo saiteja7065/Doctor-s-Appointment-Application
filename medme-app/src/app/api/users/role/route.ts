@@ -38,23 +38,44 @@ export async function GET() {
       );
     }
 
-    // Get user role
+    // Get user role with timeout
     console.log('🔍 Searching for user with clerkId:', userId);
-    const user = await User.findOne({ clerkId: userId }).lean();
+
+    // Add timeout wrapper for database query
+    const queryTimeout = 5000; // 5 second timeout
+    const user = await Promise.race([
+      User.findOne({ clerkId: userId }).lean(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Database query timeout')), queryTimeout)
+      )
+    ]).catch(error => {
+      console.log('💥 Database query failed:', error.message);
+      return null;
+    });
+
     console.log('👤 Found user:', user ? 'Yes' : 'No');
 
     if (!user) {
       console.log('❌ User not found in database');
-      // Return default doctor role for new users in demo mode
-      return NextResponse.json(
-        {
-          role: 'doctor',
-          status: 'active',
-          userId: 'new_' + userId,
-          message: 'New user - assigned demo doctor role'
-        },
-        { status: 200 }
-      );
+      // Check if this is a demo user
+      const isDemoMode = process.env.NODE_ENV === 'development';
+
+      if (isDemoMode) {
+        // Return default patient role for new users in demo mode
+        console.log('🧪 Demo mode: Creating temporary user record');
+        return NextResponse.json(
+          {
+            role: 'patient',
+            status: 'active',
+            userId: 'temp_' + userId,
+            message: 'User not found in database - using demo patient role'
+          },
+          { status: 200 }
+        );
+      } else {
+        // In production, user should exist in database
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
     }
 
     console.log('✅ Successfully found user role:', user.role);

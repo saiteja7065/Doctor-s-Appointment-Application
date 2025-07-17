@@ -17,6 +17,27 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
+        // Check for demo user first
+        const demoUser = localStorage.getItem('demoUser');
+        const isDemoAuth = localStorage.getItem('demoAuth');
+
+        if (isDemoAuth && demoUser) {
+          const demoUserData = JSON.parse(demoUser);
+          console.log('🧪 Demo user detected:', demoUserData);
+          setUserRole(demoUserData.role);
+
+          // Redirect based on demo user role
+          if (demoUserData.role === 'patient') {
+            router.push('/dashboard/patient');
+          } else if (demoUserData.role === 'doctor') {
+            router.push('/dashboard/doctor');
+          } else if (demoUserData.role === 'admin') {
+            router.push('/dashboard/admin');
+          }
+          return;
+        }
+
+        // Try to fetch from API for real users
         const response = await fetch('/api/users/role');
         if (response.ok) {
           const data = await response.json();
@@ -36,14 +57,18 @@ export default function DashboardPage() {
           router.push('/onboarding');
         } else {
           console.error('Failed to fetch user role:', response.status);
+          // Fallback to onboarding if API fails
+          router.push('/onboarding');
         }
       } catch (error) {
         console.error('Error fetching user role:', error);
+        // Fallback to onboarding if error occurs
+        router.push('/onboarding');
       }
     };
 
-    if (isLoaded && user) {
-      // Fetch user role and redirect to appropriate dashboard
+    if (isLoaded) {
+      // Always try to fetch user role, whether demo or real user
       fetchUserRole();
     }
   }, [isLoaded, user, router]);

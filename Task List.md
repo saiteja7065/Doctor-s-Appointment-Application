@@ -24,7 +24,7 @@ This document outlines the detailed tasks required for the development of the Me
 - User acceptance testing (UAT) for ease of login.
 **Priority:** High
 **Dependencies:** Clerk integration setup.
-**Status:** To Do
+**Status:** Partially Complete (UI Only - Backend Broken)
 **Subtasks:**
 - CP-AUTH-001.1: Set up Clerk authentication in the project.
 - CP-AUTH-001.2: Design and implement login UI.

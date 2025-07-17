@@ -7,16 +7,14 @@ export default function AuthPage() {
 
   const handleSignIn = () => {
     setIsRedirecting(true);
-    const signInUrl = 'https://smiling-drake-96.clerk.accounts.dev/sign-in?redirect_url=' + 
-      encodeURIComponent('http://localhost:3000/dashboard');
-    window.location.href = signInUrl;
+    // Use local sign-in page instead of external Clerk
+    window.location.href = '/sign-in';
   };
 
   const handleSignUp = () => {
     setIsRedirecting(true);
-    const signUpUrl = 'https://smiling-drake-96.clerk.accounts.dev/sign-up?redirect_url=' + 
-      encodeURIComponent('http://localhost:3000/dashboard');
-    window.location.href = signUpUrl;
+    // Use local sign-up page instead of external Clerk
+    window.location.href = '/sign-up';
   };
 
   return (

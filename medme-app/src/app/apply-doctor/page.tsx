@@ -105,6 +105,13 @@ export default function ApplyDoctorPage() {
     }
   }, [isLoaded, user]);
 
+  // Handle authentication redirect
+  useEffect(() => {
+    if (isLoaded && !user) {
+      router.push('/sign-in');
+    }
+  }, [isLoaded, user, router]);
+
   const checkExistingApplication = async () => {
     try {
       const response = await fetch('/api/doctors/apply');
@@ -288,8 +295,13 @@ export default function ApplyDoctorPage() {
   }
 
   if (!user) {
-    router.push('/sign-in');
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse-medical">
+          <div className="w-8 h-8 bg-primary rounded-full"></div>
+        </div>
+      </div>
+    );
   }
 
   if (hasExistingApplication) {
