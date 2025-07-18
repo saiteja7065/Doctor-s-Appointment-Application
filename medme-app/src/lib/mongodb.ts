@@ -140,7 +140,7 @@ const mongooseOptions = {
   connectTimeoutMS: 30000, // Increased timeout for Atlas
   heartbeatFrequencyMS: 10000,
   bufferCommands: true, // Enable buffering for better reliability
-  bufferMaxEntries: 0, // Disable buffer limit
+  // Note: bufferMaxEntries is deprecated in newer versions of mongoose
   family: 4, // Use IPv4
   // Let MongoDB driver handle SSL/TLS automatically for Atlas
 };

@@ -10,24 +10,73 @@ export default function DemoAuthPage() {
 
   const handleDemoAuth = async (role: 'patient' | 'doctor' | 'admin') => {
     setIsLoading(true);
-    
+
     try {
       // Simulate authentication delay
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Create demo user session
-      const demoUser = {
-        id: `demo_${role}_${Date.now()}`,
-        email: `demo.${role}@medme.com`,
+
+      // Create demo user data
+      const timestamp = Date.now();
+      const clerkId = `demo_${role}_${timestamp}`;
+      const userData = {
+        clerkId: clerkId,
+        email: `demo.${role}.${timestamp}@medme.com`,
         firstName: 'Demo',
         lastName: role.charAt(0).toUpperCase() + role.slice(1),
         role: role,
-        createdAt: new Date().toISOString(),
       };
 
-      // Store in localStorage for demo purposes
-      localStorage.setItem('demoUser', JSON.stringify(demoUser));
-      localStorage.setItem('demoAuth', 'true');
+      console.log('🔄 Creating demo user in database...', userData);
+
+      // Save user to database via API
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('✅ Demo user created in database:', result.user);
+
+        // Create demo user session with database ID
+        const demoUser = {
+          id: result.user._id,
+          clerkId: result.user.clerkId,
+          email: result.user.email,
+          firstName: result.user.firstName,
+          lastName: result.user.lastName,
+          role: result.user.role,
+          createdAt: result.user.createdAt || new Date().toISOString(),
+          isDemo: true,
+        };
+
+        // Store in localStorage for demo purposes
+        localStorage.setItem('demoUser', JSON.stringify(demoUser));
+        localStorage.setItem('demoAuth', 'true');
+
+        console.log('✅ Demo user session created:', demoUser);
+      } else {
+        console.log('⚠️ Database save failed, using localStorage only:', result.error);
+
+        // Fallback to localStorage only
+        const demoUser = {
+          id: clerkId,
+          clerkId: clerkId,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          role: userData.role,
+          createdAt: new Date().toISOString(),
+          isDemo: true,
+        };
+
+        localStorage.setItem('demoUser', JSON.stringify(demoUser));
+        localStorage.setItem('demoAuth', 'true');
+      }
 
       // Redirect based on role
       switch (role) {
@@ -45,6 +94,26 @@ export default function DemoAuthPage() {
       }
     } catch (error) {
       console.error('Demo auth error:', error);
+
+      // Fallback to localStorage only on error
+      const timestamp = Date.now();
+      const clerkId = `demo_${role}_${timestamp}`;
+      const demoUser = {
+        id: clerkId,
+        clerkId: clerkId,
+        email: `demo.${role}.${timestamp}@medme.com`,
+        firstName: 'Demo',
+        lastName: role.charAt(0).toUpperCase() + role.slice(1),
+        role: role,
+        createdAt: new Date().toISOString(),
+        isDemo: true,
+      };
+
+      localStorage.setItem('demoUser', JSON.stringify(demoUser));
+      localStorage.setItem('demoAuth', 'true');
+
+      // Still redirect to dashboard
+      router.push(`/dashboard/${role}`);
     } finally {
       setIsLoading(false);
     }

@@ -45,10 +45,10 @@ export default function Home() {
                 Join as Doctor
               </Button>
             </Link>
-            <Link href="/auth">
+            <Link href="/sign-in">
               <Button variant="ghost">Sign In</Button>
             </Link>
-            <Link href="/auth">
+            <Link href="/sign-up">
               <Button>Get Started</Button>
             </Link>
           </div>

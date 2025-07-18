@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import { User } from '@/lib/models/User';
 
 // Import the optimized MongoDB connection
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 
 export async function GET() {
   try {
@@ -21,7 +21,7 @@ export async function GET() {
 
     // Connect to database
     console.log('🔌 Attempting database connection...');
-    const isConnected = await connectToDatabase();
+    const isConnected = await connectToMongoose();
     console.log('🔌 Database connection status:', isConnected);
 
     if (!isConnected) {

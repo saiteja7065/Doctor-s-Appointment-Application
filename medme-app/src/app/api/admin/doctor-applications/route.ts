@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { connectToDatabase } from '@/lib/mongodb';
+import { connectToMongoose } from '@/lib/mongodb';
 import { DoctorApplication, ApplicationStatus } from '@/lib/models/DoctorApplication';
 import { User, UserRole } from '@/lib/models/User';
 import { Doctor } from '@/lib/models/Doctor';
 import { logUserManagementEvent } from '@/lib/audit';
 import { AuditAction } from '@/lib/models/AuditLog';
+import { DemoAuthService } from '@/lib/demo-auth';
 
 /**
  * GET /api/admin/doctor-applications
@@ -13,8 +14,83 @@ import { AuditAction } from '@/lib/models/AuditLog';
  */
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 Admin: Getting doctor applications...');
+
+    // Check if we're in demo mode
+    if (DemoAuthService.isDemoMode()) {
+      console.log('🧪 Demo mode: Returning demo doctor applications');
+
+      const { searchParams } = new URL(request.url);
+      const status = searchParams.get('status');
+
+      // Demo applications
+      const demoApplications = [
+        {
+          _id: 'demo_app_1',
+          clerkId: 'demo_doctor_clerk_1',
+          firstName: 'Dr. John',
+          lastName: 'Smith',
+          email: 'dr.john@demo.com',
+          phoneNumber: '+1234567890',
+          specialty: 'cardiology',
+          licenseNumber: 'MD123456',
+          yearsOfExperience: 10,
+          status: ApplicationStatus.PENDING,
+          submittedAt: new Date(Date.now() - 86400000), // 1 day ago
+          consultationFee: 5,
+          isDemo: true
+        },
+        {
+          _id: 'demo_app_2',
+          clerkId: 'demo_doctor_clerk_2',
+          firstName: 'Dr. Sarah',
+          lastName: 'Johnson',
+          email: 'dr.sarah@demo.com',
+          phoneNumber: '+1234567891',
+          specialty: 'pediatrics',
+          licenseNumber: 'MD789012',
+          yearsOfExperience: 8,
+          status: ApplicationStatus.UNDER_REVIEW,
+          submittedAt: new Date(Date.now() - 172800000), // 2 days ago
+          consultationFee: 4,
+          isDemo: true
+        },
+        {
+          _id: 'demo_app_3',
+          clerkId: 'demo_doctor_clerk_3',
+          firstName: 'Dr. Michael',
+          lastName: 'Brown',
+          email: 'dr.michael@demo.com',
+          phoneNumber: '+1234567892',
+          specialty: 'dermatology',
+          licenseNumber: 'MD345678',
+          yearsOfExperience: 15,
+          status: ApplicationStatus.APPROVED,
+          submittedAt: new Date(Date.now() - 259200000), // 3 days ago
+          consultationFee: 6,
+          isDemo: true
+        }
+      ];
+
+      // Filter by status if provided
+      let filteredApplications = demoApplications;
+      if (status && Object.values(ApplicationStatus).includes(status as ApplicationStatus)) {
+        filteredApplications = demoApplications.filter(app => app.status === status);
+      }
+
+      return NextResponse.json({
+        success: true,
+        applications: filteredApplications,
+        total: filteredApplications.length,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+        message: 'Demo applications returned'
+      });
+    }
+
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -22,7 +98,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    await connectToDatabase();
+    const isConnected = await connectToMongoose();
 
     // Check if user is admin
     const user = await User.findOne({ clerkId: userId });

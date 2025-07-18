@@ -23,7 +23,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LazyMotionDiv } from '@/components/ui/lazy-motion';
+// import { div } from '@/components/ui/lazy-motion'; // Temporarily disabled
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -247,7 +247,7 @@ export default function AdminUsersPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <LazyMotionDiv
+      <div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -270,11 +270,11 @@ export default function AdminUsersPage() {
             )}
           </div>
         </div>
-      </LazyMotionDiv>
+      </div>
 
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-        <LazyMotionDiv
+        <div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
@@ -291,9 +291,9 @@ export default function AdminUsersPage() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
 
-        <LazyMotionDiv
+        <div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -310,9 +310,9 @@ export default function AdminUsersPage() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
 
-        <LazyMotionDiv
+        <div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
@@ -329,9 +329,9 @@ export default function AdminUsersPage() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
 
-        <LazyMotionDiv
+        <div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
@@ -348,9 +348,9 @@ export default function AdminUsersPage() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
 
-        <LazyMotionDiv
+        <div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
@@ -367,11 +367,11 @@ export default function AdminUsersPage() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
       </div>
 
       {/* Filters */}
-      <LazyMotionDiv
+      <div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.6 }}
@@ -419,10 +419,10 @@ export default function AdminUsersPage() {
             </div>
           </CardContent>
         </Card>
-      </LazyMotionDiv>
+      </div>
 
       {/* Users List */}
-      <LazyMotionDiv
+      <div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.7 }}
@@ -509,7 +509,7 @@ export default function AdminUsersPage() {
             </Tabs>
           </CardContent>
         </Card>
-      </LazyMotionDiv>
+      </div>
 
       {/* User Detail Modal */}
       {selectedUser && (

@@ -3,9 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs';
 import { Toaster } from 'sonner';
 import { NotificationProvider } from '@/contexts/NotificationContext';
-import { PWAInstaller } from '@/components/PWAInstaller';
-import { PerformanceOptimizer } from '@/components/PerformanceOptimizer';
-import { SecurityInitializer } from '@/components/SecurityInitializer';
+// import { PWAInstaller } from '@/components/PWAInstaller'; // Temporarily disabled
+// import { PerformanceOptimizer } from '@/components/PerformanceOptimizer'; // Temporarily disabled
+// import { SecurityInitializer } from '@/components/SecurityInitializer'; // Temporarily disabled
 import "./globals.css";
 
 const geistSans = Geist({
@@ -68,8 +68,8 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <SecurityInitializer /> {/* Fixed validateClientEnvironment error */}
-          <PerformanceOptimizer />
+          {/* <SecurityInitializer /> Temporarily disabled to fix runtime error */}
+          {/* <PerformanceOptimizer /> Temporarily disabled to fix runtime error */}
           <NotificationProvider>
             {children}
             <Toaster
@@ -82,7 +82,7 @@ export default function RootLayout({
                 },
               }}
             />
-            <PWAInstaller />
+            {/* <PWAInstaller /> Temporarily disabled to fix runtime error */}
           </NotificationProvider>
         </body>
       </html>

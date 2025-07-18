@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { TimezoneDisplay } from '@/components/ui/timezone-display';
-import { LazyMotionDiv } from '@/components/ui/lazy-motion';
+// import { div } from '@/components/ui/lazy-motion'; // Temporarily disabled
 
 interface Appointment {
   id: string;
@@ -164,7 +164,7 @@ export default function AppointmentsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <LazyMotionDiv
+      <div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -183,10 +183,10 @@ export default function AppointmentsPage() {
             </Button>
           </Link>
         </div>
-      </LazyMotionDiv>
+      </div>
 
       {/* Filters */}
-      <LazyMotionDiv
+      <div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
@@ -208,10 +208,10 @@ export default function AppointmentsPage() {
             </div>
           </CardContent>
         </Card>
-      </LazyMotionDiv>
+      </div>
 
       {/* Appointments List */}
-      <LazyMotionDiv
+      <div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
@@ -254,7 +254,7 @@ export default function AppointmentsPage() {
           </Card>
         ) : (
           filteredAppointments.map((appointment, index) => (
-            <LazyMotionDiv
+            <div
               key={appointment.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -334,10 +334,10 @@ export default function AppointmentsPage() {
                   </div>
                 </CardContent>
               </Card>
-            </LazyMotionDiv>
+            </div>
           ))
         )}
-      </LazyMotionDiv>
+      </div>
     </div>
   );
 }

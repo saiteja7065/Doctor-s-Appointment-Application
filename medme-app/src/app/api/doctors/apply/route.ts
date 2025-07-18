@@ -8,6 +8,7 @@ import { createNotification, NotificationType, NotificationPriority } from '@/li
 import { sendEmail } from '@/lib/email';
 import { logUserManagementEvent } from '@/lib/audit';
 import { AuditAction } from '@/lib/models/AuditLog';
+import { DemoAuthService } from '@/lib/demo-auth';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 
@@ -40,7 +41,30 @@ const doctorApplicationSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify authentication
+    console.log('🏥 Doctor application submission started...');
+
+    // Check if we're in demo mode
+    if (DemoAuthService.isDemoMode()) {
+      console.log('🧪 Demo mode: Processing doctor application');
+
+      const body = await request.json();
+      const validatedData = doctorApplicationSchema.parse(body);
+
+      // Simulate successful application submission
+      const demoApplicationId = `demo_app_${Date.now()}`;
+
+      console.log(`✅ Demo application created: ${demoApplicationId}`);
+      return NextResponse.json({
+        success: true,
+        message: 'Doctor application submitted successfully (demo mode)',
+        applicationId: demoApplicationId,
+        status: ApplicationStatus.PENDING,
+        estimatedReviewTime: '2-5 business days',
+        isDemo: true
+      }, { status: 201 });
+    }
+
+    // Verify authentication (only in production mode)
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

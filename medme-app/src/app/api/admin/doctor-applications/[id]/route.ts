@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { DoctorApplication } from '@/lib/models/DoctorApplication';
+import { connectToMongoose } from '@/lib/mongodb';
+import { DoctorApplication, ApplicationStatus } from '@/lib/models/DoctorApplication';
 import { User, UserRole } from '@/lib/models/User';
+import { DemoAuthService } from '@/lib/demo-auth';
 
 /**
  * GET /api/admin/doctor-applications/[id]

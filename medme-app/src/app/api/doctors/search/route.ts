@@ -4,6 +4,7 @@ import { connectToMongoose } from '@/lib/mongodb';
 import { Doctor } from '@/lib/models/Doctor';
 import { User } from '@/lib/models/User';
 import { MedicalSpecialty, DoctorVerificationStatus } from '@/lib/models/Doctor';
+import { DemoAuthService } from '@/lib/demo-auth';
 
 interface DoctorSearchFilters {
   specialty?: string;
@@ -54,8 +55,9 @@ interface DoctorSearchResult {
  */
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 Doctor search request received');
     const { searchParams } = new URL(request.url);
-    
+
     // Parse query parameters
     const filters: DoctorSearchFilters = {
       specialty: searchParams.get('specialty') || undefined,
@@ -70,6 +72,27 @@ export async function GET(request: NextRequest) {
       page: parseInt(searchParams.get('page') || '1'),
       limit: parseInt(searchParams.get('limit') || '12'),
     };
+
+    console.log('🔍 Search filters:', filters);
+
+    // Check if we're in demo mode
+    if (DemoAuthService.isDemoMode()) {
+      console.log('🧪 Demo mode: Returning demo doctors including approved ones');
+      return NextResponse.json({
+        doctors: getDemoDataWithApproved(filters),
+        pagination: {
+          page: filters.page || 1,
+          limit: filters.limit || 12,
+          total: 6,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+        },
+        filters: getAvailableFilters(),
+        isDemo: true,
+        message: 'Demo mode - showing approved doctors'
+      }, { status: 200 });
+    }
 
     // Connect to database
     const isConnected = await connectToMongoose();
@@ -456,6 +479,83 @@ function getDemoFilters() {
 }
 
 /**
+ * Get demo data including approved doctors from workflow
+ */
+function getDemoDataWithApproved(filters: DoctorSearchFilters): DoctorSearchResult[] {
+  // Include approved doctors from our workflow
+  const approvedDoctors: DoctorSearchResult[] = [
+    {
+      id: 'demo_app_1_approved',
+      name: 'Dr. John Smith',
+      firstName: 'John',
+      lastName: 'Smith',
+      specialty: 'cardiology',
+      formattedSpecialty: 'Cardiology',
+      rating: 4.8,
+      totalRatings: 156,
+      experience: 10,
+      consultationFee: 5,
+      totalConsultations: 423,
+      bio: 'Experienced cardiologist with 10+ years of practice in interventional cardiology.',
+      languages: ['English', 'Spanish'],
+      isOnline: true,
+      nextAvailableSlot: 'Today 3:00 PM',
+      verificationStatus: DoctorVerificationStatus.APPROVED,
+      education: [
+        {
+          degree: 'Doctor of Medicine (MD)',
+          institution: 'Harvard Medical School',
+          graduationYear: 2010,
+        },
+      ],
+      certifications: [
+        {
+          name: 'Board Certified Cardiologist',
+          issuingOrganization: 'American Board of Internal Medicine',
+        },
+      ],
+    },
+    {
+      id: 'demo_app_3_approved',
+      name: 'Dr. Michael Brown',
+      firstName: 'Michael',
+      lastName: 'Brown',
+      specialty: 'dermatology',
+      formattedSpecialty: 'Dermatology',
+      rating: 4.9,
+      totalRatings: 89,
+      experience: 15,
+      consultationFee: 6,
+      totalConsultations: 234,
+      bio: 'Dermatologist specializing in skin cancer detection and cosmetic procedures.',
+      languages: ['English'],
+      isOnline: true,
+      nextAvailableSlot: 'Tomorrow 11:00 AM',
+      verificationStatus: DoctorVerificationStatus.APPROVED,
+      education: [
+        {
+          degree: 'MD in Dermatology',
+          institution: 'Johns Hopkins School of Medicine',
+          graduationYear: 2005,
+        },
+      ],
+      certifications: [
+        {
+          name: 'Board Certified Dermatologist',
+          issuingOrganization: 'American Board of Dermatology',
+        },
+      ],
+    },
+  ];
+
+  // Combine with existing demo data
+  const allDoctors = [...approvedDoctors, ...getDemoData(filters)];
+
+  // Apply filters
+  return applyFilters(allDoctors, filters);
+}
+
+/**
  * Get demo doctor data when database is not available
  */
 function getDemoData(filters: DoctorSearchFilters): DoctorSearchResult[] {
@@ -656,4 +756,89 @@ function getDemoData(filters: DoctorSearchFilters): DoctorSearchResult[] {
   const endIndex = startIndex + limit;
 
   return filteredData.slice(startIndex, endIndex);
+}
+
+/**
+ * Apply filters to doctor search results
+ */
+function applyFilters(doctors: DoctorSearchResult[], filters: DoctorSearchFilters): DoctorSearchResult[] {
+  let filtered = [...doctors];
+
+  // Apply specialty filter
+  if (filters.specialty) {
+    filtered = filtered.filter(doctor => doctor.specialty === filters.specialty);
+  }
+
+  // Apply rating filter
+  if (filters.minRating) {
+    filtered = filtered.filter(doctor => doctor.rating >= filters.minRating!);
+  }
+
+  // Apply fee filter
+  if (filters.maxFee) {
+    filtered = filtered.filter(doctor => doctor.consultationFee <= filters.maxFee!);
+  }
+
+  // Apply experience filter
+  if (filters.experience) {
+    filtered = filtered.filter(doctor => doctor.experience >= filters.experience!);
+  }
+
+  // Apply language filter
+  if (filters.languages && filters.languages.length > 0) {
+    filtered = filtered.filter(doctor =>
+      filters.languages!.some(lang => doctor.languages.includes(lang))
+    );
+  }
+
+  // Apply search filter
+  if (filters.search) {
+    const searchTerm = filters.search.toLowerCase();
+    filtered = filtered.filter(doctor =>
+      doctor.name.toLowerCase().includes(searchTerm) ||
+      doctor.bio?.toLowerCase().includes(searchTerm) ||
+      doctor.specialty.toLowerCase().includes(searchTerm)
+    );
+  }
+
+  // Apply sorting
+  if (filters.sortBy) {
+    filtered.sort((a, b) => {
+      let aValue: any, bValue: any;
+
+      switch (filters.sortBy) {
+        case 'rating':
+          aValue = a.rating;
+          bValue = b.rating;
+          break;
+        case 'experience':
+          aValue = a.experience;
+          bValue = b.experience;
+          break;
+        case 'fee':
+          aValue = a.consultationFee;
+          bValue = b.consultationFee;
+          break;
+        case 'consultations':
+          aValue = a.totalConsultations;
+          bValue = b.totalConsultations;
+          break;
+        case 'name':
+          aValue = a.name;
+          bValue = b.name;
+          break;
+        default:
+          aValue = a.rating;
+          bValue = b.rating;
+      }
+
+      if (filters.sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+  }
+
+  return filtered;
 }

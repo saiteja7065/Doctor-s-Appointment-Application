@@ -297,7 +297,7 @@ export default function AdminFinancialPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <LazyMotionDiv
+      <div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -319,11 +319,11 @@ export default function AdminFinancialPage() {
             </Button>
           </div>
         </div>
-      </LazyMotionDiv>
+      </div>
 
       {/* Financial Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <LazyMotionDiv
+        <div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
@@ -342,9 +342,9 @@ export default function AdminFinancialPage() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
 
-        <LazyMotionDiv
+        <div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -363,9 +363,9 @@ export default function AdminFinancialPage() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
 
-        <LazyMotionDiv
+        <div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
@@ -384,9 +384,9 @@ export default function AdminFinancialPage() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
 
-        <LazyMotionDiv
+        <div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
@@ -405,11 +405,11 @@ export default function AdminFinancialPage() {
               </p>
             </CardContent>
           </Card>
-        </LazyMotionDiv>
+        </div>
       </div>
 
       {/* Financial Management Tabs */}
-      <LazyMotionDiv
+      <div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.5 }}
@@ -551,7 +551,7 @@ export default function AdminFinancialPage() {
             </Tabs>
           </CardContent>
         </Card>
-      </LazyMotionDiv>
+      </div>
 
       {/* Withdrawal Detail Modal */}
       {selectedWithdrawal && (
