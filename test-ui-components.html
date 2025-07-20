@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedMe UI Component Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #0070f3;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eaeaea;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #eaeaea;
+            border-radius: 8px;
+        }
+        .test-controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            background-color: #0070f3;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0051a2;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow: auto;
+        }
+        .success {
+            background-color: #e6ffec;
+            border: 1px solid #b4e6b4;
+        }
+        .error {
+            background-color: #ffebe9;
+            border: 1px solid #e6b4b4;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0, 112, 243, 0.3);
+            border-radius: 50%;
+            border-top-color: #0070f3;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏥 MedMe UI Component Test</h1>
+        <div>
+            <span id="status-indicator">⚪ Not Connected</span>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>1. API Health Check</h2>
+        <p>Tests the health check endpoint to verify the API is running.</p>
+        <div class="test-controls">
+            <button id="test-health">Run Test</button>
+        </div>
+        <div id="health-result" class="result hidden"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. MongoDB Connection</h2>
+        <p>Tests the MongoDB connection to verify database access.</p>
+        <div class="test-controls">
+            <button id="test-mongodb">Run Test</button>
+        </div>
+        <div id="mongodb-result" class="result hidden"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Doctor Search</h2>
+        <p>Tests the doctor search functionality with various filters.</p>
+        <div class="test-controls">
+            <select id="specialty-filter">
+                <option value="">All Specialties</option>
+                <option value="cardiology">Cardiology</option>
+                <option value="dermatology">Dermatology</option>
+                <option value="neurology">Neurology</option>
+                <option value="pediatrics">Pediatrics</option>
+                <option value="psychiatry">Psychiatry</option>
+            </select>
+            <button id="test-doctor-search">Search Doctors</button>
+        </div>
+        <div id="doctor-search-result" class="result hidden"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Doctor Application</h2>
+        <p>Tests the doctor application submission process.</p>
+        <div class="test-controls">
+            <button id="test-doctor-application">Submit Test Application</button>
+        </div>
+        <div id="doctor-application-result" class="result hidden"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Admin Overview</h2>
+        <p>Tests the admin overview statistics endpoint.</p>
+        <div class="test-controls">
+            <button id="test-admin-overview">Get Admin Stats</button>
+        </div>
+        <div id="admin-overview-result" class="result hidden"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>6. Notifications</h2>
+        <p>Tests the notification system functionality.</p>
+        <div class="test-controls">
+            <button id="test-notifications">Check Notifications</button>
+        </div>
+        <div id="notifications-result" class="result hidden"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>7. Run All Tests</h2>
+        <p>Runs all tests in sequence and provides a summary.</p>
+        <div class="test-controls">
+            <button id="run-all-tests">Run All Tests</button>
+        </div>
+        <div id="all-tests-result" class="result hidden"></div>
+    </div>
+
+    <script>
+        // Configuration
+        const BASE_URL = 'http://localhost:3000';
+        const DEMO_HEADERS = { 'X-Demo-Mode': 'true' };
+
+        // Helper function to make API calls
+        async function callApi(endpoint, method = 'GET', body = null, headers = {}) {
+            const url = `${BASE_URL}${endpoint}`;
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...headers
+                }
+            };
+
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+
+            try {
+                const startTime = performance.now();
+                const response = await fetch(url, options);
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                const data = await response.json();
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    data,
+                    responseTime
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        // Helper function to display results
+        function displayResult(elementId, result, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.classList.remove('hidden', 'success', 'error');
+            element.classList.add(isSuccess ? 'success' : 'error');
+            element.textContent = typeof result === 'object' ? JSON.stringify(result, null, 2) : result;
+        }
+
+        // Health Check Test
+        document.getElementById('test-health').addEventListener('click', async () => {
+            const resultElement = document.getElementById('health-result');
+            resultElement.classList.remove('hidden');
+            resultElement.textContent = 'Testing...';
+            
+            const response = await callApi('/api/health');
+            
+            if (response.success) {
+                displayResult('health-result', {
+                    status: response.data.status,
+                    message: 'Health check successful',
+                    responseTime: `${response.responseTime}ms`
+                });
+                document.getElementById('status-indicator').textContent = '🟢 API Connected';
+            } else {
+                displayResult('health-result', {
+                    error: 'Health check failed',
+                    details: response.error
+                }, false);
+                document.getElementById('status-indicator').textContent = '🔴 API Disconnected';
+            }
+        });
+
+        // MongoDB Connection Test
+        document.getElementById('test-mongodb').addEventListener('click', async () => {
+            const resultElement = document.getElementById('mongodb-result');
+            resultElement.classList.remove('hidden');
+            resultElement.textContent = 'Testing...';
+            
+            const response = await callApi('/api/test-db');
+            
+            if (response.success && response.data.connected) {
+                displayResult('mongodb-result', {
+                    connected: true,
+                    database: response.data.database,
+                    message: 'MongoDB connection successful',
+                    responseTime: `${response.responseTime}ms`
+                });
+            } else {
+                displayResult('mongodb-result', {
+                    connected: false,
+                    error: 'MongoDB connection failed',
+                    details: response.error || response.data?.error
+                }, false);
+            }
+        });
+
+        // Doctor Search Test
+        document.getElementById('test-doctor-search').addEventListener('click', async () => {
+            const resultElement = document.getElementById('doctor-search-result');
+            resultElement.classList.remove('hidden');
+            resultElement.textContent = 'Searching...';
+            
+            const specialty = document.getElementById('specialty-filter').value;
+            const endpoint = specialty ? `/api/doctors/search?specialty=${specialty}` : '/api/doctors/search';
+            
+            const response = await callApi(endpoint, 'GET', null, DEMO_HEADERS);
+            
+            if (response.success && response.data.doctors) {
+                displayResult('doctor-search-result', {
+                    success: true,
+                    doctorCount: response.data.doctors.length,
+                    doctors: response.data.doctors.slice(0, 3).map(d => ({
+                        name: `${d.firstName} ${d.lastName}`,
+                        specialty: d.specialty,
+                        fee: d.consultationFee
+                    })),
+                    responseTime: `${response.responseTime}ms`
+                });
+            } else {
+                displayResult('doctor-search-result', {
+                    success: false,
+                    error: 'Doctor search failed',
+                    details: response.error || response.data?.error
+                }, false);
+            }
+        });
+
+        // Doctor Application Test
+        document.getElementById('test-doctor-application').addEventListener('click', async () => {
+            const resultElement = document.getElementById('doctor-application-result');
+            resultElement.classList.remove('hidden');
+            resultElement.textContent = 'Submitting...';
+            
+            const doctorApplication = {
+                specialty: 'cardiology',
+                licenseNumber: 'MD' + Math.floor(Math.random() * 1000000),
+                yearsOfExperience: 10,
+                education: 'Harvard Medical School',
+                bio: 'Experienced cardiologist with 10+ years of practice',
+                consultationFee: 150,
+                languages: ['English', 'Spanish']
+            };
+            
+            const response = await callApi('/api/doctors/apply', 'POST', doctorApplication, DEMO_HEADERS);
+            
+            if (response.success && response.data.success) {
+                displayResult('doctor-application-result', {
+                    success: true,
+                    applicationId: response.data.applicationId,
+                    status: response.data.status,
+                    message: 'Application submitted successfully',
+                    responseTime: `${response.responseTime}ms`
+                });
+            } else {
+                displayResult('doctor-application-result', {
+                    success: false,
+                    error: 'Application submission failed',
+                    details: response.error || response.data?.error
+                }, false);
+            }
+        });
+
+        // Admin Overview Test
+        document.getElementById('test-admin-overview').addEventListener('click', async () => {
+            const resultElement = document.getElementById('admin-overview-result');
+            resultElement.classList.remove('hidden');
+            resultElement.textContent = 'Loading...';
+            
+            const response = await callApi('/api/admin/overview', 'GET', null, DEMO_HEADERS);
+            
+            if (response.success && response.data.stats) {
+                displayResult('admin-overview-result', {
+                    success: true,
+                    stats: response.data.stats,
+                    responseTime: `${response.responseTime}ms`
+                });
+            } else {
+                displayResult('admin-overview-result', {
+                    success: false,
+                    error: 'Admin overview failed',
+                    details: response.error || response.data?.error
+                }, false);
+            }
+        });
+
+        // Notifications Test
+        document.getElementById('test-notifications').addEventListener('click', async () => {
+            const resultElement = document.getElementById('notifications-result');
+            resultElement.classList.remove('hidden');
+            resultElement.textContent = 'Checking...';
+            
+            const response = await callApi('/api/notifications/check', 'GET', null, DEMO_HEADERS);
+            
+            if (response.success) {
+                displayResult('notifications-result', {
+                    success: true,
+                    hasNotifications: response.data.hasNotifications,
+                    notificationCount: response.data.notifications?.length || 0,
+                    responseTime: `${response.responseTime}ms`
+                });
+            } else {
+                displayResult('notifications-result', {
+                    success: false,
+                    error: 'Notifications check failed',
+                    details: response.error || response.data?.error
+                }, false);
+            }
+        });
+
+        // Run All Tests
+        document.getElementById('run-all-tests').addEventListener('click', async () => {
+            const resultElement = document.getElementById('all-tests-result');
+            resultElement.classList.remove('hidden');
+            resultElement.textContent = 'Running all tests...';
+            
+            const tests = [
+                { name: 'Health Check', fn: () => callApi('/api/health') },
+                { name: 'MongoDB Connection', fn: () => callApi('/api/test-db') },
+                { name: 'Doctor Search', fn: () => callApi('/api/doctors/search', 'GET', null, DEMO_HEADERS) },
+                { 
+                    name: 'Doctor Application', 
+                    fn: () => callApi('/api/doctors/apply', 'POST', {
+                        specialty: 'cardiology',
+                        licenseNumber: 'MD' + Math.floor(Math.random() * 1000000),
+                        yearsOfExperience: 10,
+                        education: 'Harvard Medical School',
+                        bio: 'Experienced cardiologist with 10+ years of practice',
+                        consultationFee: 150,
+                        languages: ['English', 'Spanish']
+                    }, DEMO_HEADERS) 
+                },
+                { name: 'Admin Overview', fn: () => callApi('/api/admin/overview', 'GET', null, DEMO_HEADERS) },
+                { name: 'Notifications', fn: () => callApi('/api/notifications/check', 'GET', null, DEMO_HEADERS) }
+            ];
+            
+            const results = [];
+            let passed = 0;
+            let failed = 0;
+            let totalResponseTime = 0;
+            
+            for (const test of tests) {
+                try {
+                    const response = await test.fn();
+                    const success = response.success;
+                    
+                    results.push({
+                        name: test.name,
+                        success,
+                        responseTime: response.responseTime || 0
+                    });
+                    
+                    if (success) {
+                        passed++;
+                        totalResponseTime += response.responseTime || 0;
+                    } else {
+                        failed++;
+                    }
+                } catch (error) {
+                    results.push({
+                        name: test.name,
+                        success: false,
+                        error: error.message
+                    });
+                    failed++;
+                }
+            }
+            
+            const summary = {
+                totalTests: tests.length,
+                passed,
+                failed,
+                successRate: Math.round((passed / tests.length) * 100),
+                averageResponseTime: Math.round(totalResponseTime / passed),
+                results
+            };
+            
+            displayResult('all-tests-result', summary, failed === 0);
+            
+            // Update status indicator
+            document.getElementById('status-indicator').textContent = 
+                failed === 0 ? '🟢 All Tests Passed' : `🟠 ${passed}/${tests.length} Tests Passed`;
+        });
+    </script>
+</body>
+</html>

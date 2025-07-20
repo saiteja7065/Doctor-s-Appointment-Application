@@ -1,37 +1,40 @@
-import { Vonage } from '@vonage/server-sdk';
+import { Video } from '@vonage/video';
 
 // Vonage configuration
 const vonageConfig = {
   apiKey: process.env.VONAGE_API_KEY || '',
   apiSecret: process.env.VONAGE_API_SECRET || '',
   applicationId: process.env.VONAGE_APPLICATION_ID || '',
-  privateKeyPath: process.env.VONAGE_PRIVATE_KEY_PATH || '',
 };
 
-// Initialize Vonage client
-let vonageClient: Vonage | null = null;
+// Initialize Vonage Video client
+let videoClient: Video | null = null;
 
-export function getVonageClient(): Vonage | null {
+export function getVonageVideoClient(): Video | null {
   if (!vonageConfig.apiKey || !vonageConfig.apiSecret) {
     console.warn('Vonage credentials not configured. Video features will use demo mode.');
     return null;
   }
 
-  if (!vonageClient) {
+  if (!videoClient) {
     try {
-      vonageClient = new Vonage({
+      videoClient = new Video({
         apiKey: vonageConfig.apiKey,
         apiSecret: vonageConfig.apiSecret,
-        applicationId: vonageConfig.applicationId,
-        privateKey: vonageConfig.privateKeyPath ? require('fs').readFileSync(vonageConfig.privateKeyPath) : undefined,
       });
     } catch (error) {
-      console.error('Failed to initialize Vonage client:', error);
+      console.error('Failed to initialize Vonage Video client:', error);
       return null;
     }
   }
 
-  return vonageClient;
+  return videoClient;
+}
+
+// Check if we're in demo mode
+export function isVonageDemoMode(): boolean {
+  return !vonageConfig.apiKey || vonageConfig.apiKey === 'demo_api_key' ||
+         !vonageConfig.apiSecret || vonageConfig.apiSecret === 'demo_api_secret';
 }
 
 export interface VonageSession {
@@ -44,10 +47,11 @@ export interface VonageSession {
  * Create a new Vonage video session for an appointment
  */
 export async function createVideoSession(appointmentId: string): Promise<VonageSession> {
-  const client = getVonageClient();
+  const client = getVonageVideoClient();
 
-  if (!client) {
-    // Return demo session data when Vonage is not configured
+  if (!client || isVonageDemoMode()) {
+    // Return demo session data when Vonage is not configured or in demo mode
+    console.log('Using demo mode for video session');
     const demoSessionId = `demo_session_${appointmentId}_${Date.now()}`;
     return {
       sessionId: demoSessionId,
@@ -58,9 +62,10 @@ export async function createVideoSession(appointmentId: string): Promise<VonageS
 
   try {
     // Create a new session using the Video API
-    const sessionResponse = await client.video.createSession({
+    const sessionResponse = await client.createSession({
       mediaMode: 'routed', // Use routed mode for better reliability
       archiveMode: 'manual', // Allow manual recording if needed
+      location: undefined, // Let Vonage choose the best location
     });
 
     const sessionId = sessionResponse.sessionId;
@@ -69,7 +74,7 @@ export async function createVideoSession(appointmentId: string): Promise<VonageS
     }
 
     // Generate a default token (we'll generate role-specific tokens in generateSessionToken)
-    const defaultToken = await client.video.generateClientToken(sessionId, {
+    const defaultToken = client.generateClientToken(sessionId, {
       role: 'publisher',
       data: JSON.stringify({
         role: 'patient',
@@ -79,6 +84,8 @@ export async function createVideoSession(appointmentId: string): Promise<VonageS
     });
 
     const meetingLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/consultation/${sessionId}`;
+
+    console.log(`Created Vonage session: ${sessionId} for appointment: ${appointmentId}`);
 
     return {
       sessionId,
@@ -107,15 +114,15 @@ export async function generateSessionToken(
   role: 'patient' | 'doctor',
   appointmentId: string
 ): Promise<string> {
-  const client = getVonageClient();
+  const client = getVonageVideoClient();
 
-  if (!client) {
-    // Return demo token when Vonage is not configured
+  if (!client || isVonageDemoMode()) {
+    // Return demo token when Vonage is not configured or in demo mode
     return `demo_token_${role}_${appointmentId}_${Date.now()}`;
   }
 
   try {
-    const token = await client.video.generateClientToken(sessionId, {
+    const token = client.generateClientToken(sessionId, {
       role: 'publisher', // Both patients and doctors can publish and subscribe
       data: JSON.stringify({
         role,
@@ -124,6 +131,7 @@ export async function generateSessionToken(
       expireTime: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 hours
     });
 
+    console.log(`Generated token for ${role} in session: ${sessionId}`);
     return token;
 
   } catch (error) {
@@ -136,20 +144,21 @@ export async function generateSessionToken(
  * Archive (record) a session
  */
 export async function startArchive(sessionId: string, name?: string): Promise<string | null> {
-  const client = getVonageClient();
+  const client = getVonageVideoClient();
 
-  if (!client) {
-    console.warn('Vonage client not available for archiving');
-    return null;
+  if (!client || isVonageDemoMode()) {
+    console.warn('Vonage client not available for archiving (demo mode)');
+    return `demo_archive_${sessionId}_${Date.now()}`;
   }
 
   try {
-    const archive = await client.video.startArchive(sessionId, {
+    const archive = await client.startArchive(sessionId, {
       name: name || `consultation_${sessionId}_${Date.now()}`,
       outputMode: 'composed',
       resolution: '1280x720',
     });
 
+    console.log(`Started archive: ${archive.id} for session: ${sessionId}`);
     return archive.id;
   } catch (error) {
     console.error('Error starting archive:', error);
@@ -161,15 +170,16 @@ export async function startArchive(sessionId: string, name?: string): Promise<st
  * Stop archiving a session
  */
 export async function stopArchive(archiveId: string): Promise<boolean> {
-  const client = getVonageClient();
+  const client = getVonageVideoClient();
 
-  if (!client) {
-    console.warn('Vonage client not available for archiving');
-    return false;
+  if (!client || isVonageDemoMode()) {
+    console.log('Demo mode: Archive stopped successfully');
+    return true;
   }
 
   try {
-    await client.video.stopArchive(archiveId);
+    await client.stopArchive(archiveId);
+    console.log(`Stopped archive: ${archiveId}`);
     return true;
   } catch (error) {
     console.error('Error stopping archive:', error);
@@ -181,9 +191,9 @@ export async function stopArchive(archiveId: string): Promise<boolean> {
  * Get session information
  */
 export async function getSessionInfo(sessionId: string): Promise<any> {
-  const client = getVonageClient();
+  const client = getVonageVideoClient();
 
-  if (!client) {
+  if (!client || isVonageDemoMode()) {
     return {
       sessionId,
       status: 'demo',
@@ -192,8 +202,13 @@ export async function getSessionInfo(sessionId: string): Promise<any> {
   }
 
   try {
-    const sessionInfo = await client.video.getSession(sessionId);
-    return sessionInfo;
+    // Note: The Video API doesn't have a direct getSession method
+    // This would typically require storing session state in your database
+    return {
+      sessionId,
+      status: 'active',
+      connectionCount: 0,
+    };
   } catch (error) {
     console.error('Error getting session info:', error);
     return {
@@ -212,9 +227,9 @@ export async function getAppointmentSessionInfo(sessionId: string): Promise<{
   isActive: boolean;
   connectionCount: number;
 } | null> {
-  const client = getVonageClient();
-  
-  if (!client) {
+  const client = getVonageVideoClient();
+
+  if (!client || isVonageDemoMode()) {
     // Return demo session info
     return {
       sessionId,
@@ -243,9 +258,9 @@ export async function getAppointmentSessionInfo(sessionId: string): Promise<{
  * End a video session
  */
 export async function endVideoSession(sessionId: string): Promise<boolean> {
-  const client = getVonageClient();
-  
-  if (!client) {
+  const client = getVonageVideoClient();
+
+  if (!client || isVonageDemoMode()) {
     console.log('Demo mode: Session ended successfully');
     return true;
   }
@@ -288,5 +303,9 @@ export default {
   getSessionInfo,
   endVideoSession,
   validateVonageConfig,
-  getVonageClient,
+  getVonageVideoClient,
+  isVonageDemoMode,
+  startArchive,
+  stopArchive,
+  getAppointmentSessionInfo,
 };

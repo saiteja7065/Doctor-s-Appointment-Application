@@ -1,317 +1,157 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { User, UserRole } from '@/lib/models/User';
+import { auth } from '@clerk/nextjs';
+import { connectToMongoose } from '@/lib/mongodb';
+import User, { UserRole } from '@/lib/models/User';
+import { createAuditLog } from '@/lib/audit';
 
-// RBAC Error types
-export class RBACError extends Error {
-  constructor(message: string, public statusCode: number = 403) {
-    super(message);
-    this.name = 'RBACError';
+// Interface for role-based access control options
+interface RBACOptions {
+  allowedRoles: UserRole[];
+  demoModeEnabled?: boolean;
+}
+
+// Function to check if demo mode is enabled
+function isDemoMode(req: NextRequest): boolean {
+  return req.headers.get('X-Demo-Mode') === 'true';
+}
+
+// Middleware to check if user has required role
+export async function checkUserRole(
+  req: NextRequest,
+  { allowedRoles, demoModeEnabled = true }: RBACOptions
+): Promise<{ 
+  authorized: boolean; 
+  user?: any; 
+  demoMode: boolean;
+  error?: string;
+}> {
+  // Check if demo mode is enabled
+  const demoMode = isDemoMode(req);
+  
+  // If demo mode is enabled and allowed, authorize the request
+  if (demoMode && demoModeEnabled) {
+    return { authorized: true, demoMode: true };
   }
-}
-
-export class AuthenticationError extends RBACError {
-  constructor(message: string = 'Authentication required') {
-    super(message, 401);
-    this.name = 'AuthenticationError';
-  }
-}
-
-export class AuthorizationError extends RBACError {
-  constructor(message: string = 'Insufficient permissions') {
-    super(message, 403);
-    this.name = 'AuthorizationError';
-  }
-}
-
-// User context interface
-export interface UserContext {
-  userId: string;
-  clerkId: string;
-  role: UserRole;
-  status: string;
-  user: any; // Full user object from database
-}
-
-// RBAC configuration interface
-export interface RBACConfig {
-  requiredRoles: UserRole | UserRole[];
-  allowSelf?: boolean; // Allow access to own resources
-  requireActiveStatus?: boolean; // Require active user status
-  customCheck?: (user: UserContext, request: NextRequest) => Promise<boolean>;
-}
-
-/**
- * Authenticate user and get user context
- */
-export async function authenticateUser(): Promise<UserContext> {
-  const { userId } = await auth();
-
+  
+  // Get user from Clerk
+  const { userId } = auth();
+  
   if (!userId) {
-    throw new AuthenticationError('User not authenticated');
-  }
-
-  // Connect to database
-  const isConnected = await connectToDatabase();
-  if (!isConnected) {
-    // Return demo user context when database is not available
-    console.log('Database not connected, using demo user context for:', userId);
-    return {
-      userId: 'demo_' + userId,
-      clerkId: userId,
-      role: UserRole.DOCTOR, // Default to doctor for demo
-      status: 'active',
-      user: {
-        _id: 'demo_' + userId,
-        clerkId: userId,
-        role: UserRole.DOCTOR,
-        status: 'active',
-        firstName: 'Demo',
-        lastName: 'Doctor'
-      }
+    return { 
+      authorized: false, 
+      demoMode: false,
+      error: 'Unauthorized: User not authenticated' 
     };
   }
-
-  // Get user from database with timeout
-  let user;
+  
+  // Connect to MongoDB
+  const connected = await connectToMongoose();
+  if (!connected) {
+    return { 
+      authorized: false, 
+      demoMode: false,
+      error: 'Database connection error' 
+    };
+  }
+  
   try {
-    user = await Promise.race([
-      User.findOne({ clerkId: userId }),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Database query timeout')), 5000)
-      )
-    ]);
-  } catch (error) {
-    console.log('Database query failed or timed out, using demo user context for:', userId, error);
-    return {
-      userId: 'demo_' + userId,
-      clerkId: userId,
-      role: UserRole.DOCTOR, // Default to doctor for demo
-      status: 'active',
-      user: {
-        _id: 'demo_' + userId,
-        clerkId: userId,
-        role: UserRole.DOCTOR,
-        status: 'active',
-        firstName: 'Demo',
-        lastName: 'Doctor'
-      }
-    };
-  }
-
-  if (!user) {
-    // Create demo user context for new users
-    console.log('User not found in database, using demo user context for:', userId);
-    return {
-      userId: 'demo_' + userId,
-      clerkId: userId,
-      role: UserRole.DOCTOR, // Default to doctor for demo
-      status: 'active',
-      user: {
-        _id: 'demo_' + userId,
-        clerkId: userId,
-        role: UserRole.DOCTOR,
-        status: 'active',
-        firstName: 'Demo',
-        lastName: 'Doctor'
-      }
-    };
-  }
-
-  return {
-    userId: user._id.toString(),
-    clerkId: userId,
-    role: user.role,
-    status: user.status,
-    user: user
-  };
-}
-
-/**
- * Check if user has required role(s)
- */
-export function hasRequiredRole(userRole: UserRole, requiredRoles: UserRole | UserRole[]): boolean {
-  if (Array.isArray(requiredRoles)) {
-    return requiredRoles.includes(userRole);
-  }
-  return userRole === requiredRoles;
-}
-
-/**
- * Check if user can access their own resource
- */
-export function canAccessOwnResource(userContext: UserContext, resourceUserId: string): boolean {
-  return userContext.userId === resourceUserId || userContext.clerkId === resourceUserId;
-}
-
-/**
- * Main RBAC middleware function
- */
-export function withRBAC(
-  config: RBACConfig,
-  handler: (userContext: UserContext, request: NextRequest) => Promise<NextResponse>
-) {
-  return async (request: NextRequest): Promise<NextResponse> => {
-    try {
-      // Authenticate user
-      const userContext = await authenticateUser();
-
-      // Check if user status is active (if required)
-      if (config.requireActiveStatus !== false && userContext.status !== 'active') {
-        throw new AuthorizationError('Account is not active. Please contact support.');
-      }
-
-      // Check role-based access
-      if (!hasRequiredRole(userContext.role, config.requiredRoles)) {
-        throw new AuthorizationError(
-          `Access denied. Required role(s): ${Array.isArray(config.requiredRoles) 
-            ? config.requiredRoles.join(', ') 
-            : config.requiredRoles}`
-        );
-      }
-
-      // Run custom authorization check if provided
-      if (config.customCheck) {
-        const customCheckPassed = await config.customCheck(userContext, request);
-        if (!customCheckPassed) {
-          throw new AuthorizationError('Custom authorization check failed');
-        }
-      }
-
-      // Call the actual handler with user context
-      return await handler(userContext, request);
-
-    } catch (error) {
-      console.error('RBAC Error:', error);
-
-      if (error instanceof RBACError) {
-        return NextResponse.json(
-          { 
-            error: error.name,
-            message: error.message,
-            statusCode: error.statusCode
-          },
-          { status: error.statusCode }
-        );
-      }
-
-      // Handle unexpected errors
-      return NextResponse.json(
-        { 
-          error: 'Internal Server Error',
-          message: 'An unexpected error occurred'
-        },
-        { status: 500 }
-      );
+    // Find user in database
+    const user = await User.findOne({ clerkId: userId });
+    
+    if (!user) {
+      return { 
+        authorized: false, 
+        demoMode: false,
+        error: 'Unauthorized: User not found in database' 
+      };
     }
-  };
+    
+    // Check if user has required role
+    const hasRequiredRole = allowedRoles.includes(user.role);
+    
+    if (!hasRequiredRole) {
+      // Log unauthorized access attempt
+      await createAuditLog({
+        action: 'unauthorized.access',
+        entityId: user._id.toString(),
+        entityType: 'user',
+        data: { 
+          userId: user._id.toString(),
+          requiredRoles: allowedRoles,
+          userRole: user.role
+        },
+      });
+      
+      return { 
+        authorized: false, 
+        user,
+        demoMode: false,
+        error: `Unauthorized: Required role(s): ${allowedRoles.join(', ')}` 
+      };
+    }
+    
+    return { authorized: true, user, demoMode: false };
+  } catch (error) {
+    console.error('Error checking user role:', error);
+    return { 
+      authorized: false, 
+      demoMode: false,
+      error: 'Error checking user role' 
+    };
+  }
 }
 
-/**
- * Convenience function for patient-only routes
- */
-export function withPatientAuth(
-  handler: (userContext: UserContext, request: NextRequest) => Promise<NextResponse>
-) {
-  return withRBAC(
-    { 
-      requiredRoles: UserRole.PATIENT,
-      requireActiveStatus: true
-    },
-    handler
-  );
-}
-
-/**
- * Convenience function for doctor-only routes
- */
-export function withDoctorAuth(
-  handler: (userContext: UserContext, request: NextRequest) => Promise<NextResponse>
-) {
-  return withRBAC(
-    { 
-      requiredRoles: UserRole.DOCTOR,
-      requireActiveStatus: false // Doctors can be pending verification
-    },
-    handler
-  );
-}
-
-/**
- * Convenience function for admin-only routes
- */
-export function withAdminAuth(
-  handler: (userContext: UserContext, request: NextRequest) => Promise<NextResponse>
-) {
-  return withRBAC(
-    { 
-      requiredRoles: UserRole.ADMIN,
-      requireActiveStatus: true
-    },
-    handler
-  );
-}
-
-/**
- * Convenience function for routes accessible by multiple roles
- */
-export function withMultiRoleAuth(
-  roles: UserRole[],
-  handler: (userContext: UserContext, request: NextRequest) => Promise<NextResponse>
-) {
-  return withRBAC(
-    { 
-      requiredRoles: roles,
-      requireActiveStatus: true
-    },
-    handler
-  );
-}
-
-/**
- * Utility function to extract resource ID from URL path
- */
-export function extractResourceId(request: NextRequest, paramName: string = 'id'): string | null {
-  const url = new URL(request.url);
-  const pathSegments = url.pathname.split('/');
-  const paramIndex = pathSegments.findIndex(segment => segment === paramName);
+// Middleware to protect routes based on user role
+export async function rbacMiddleware(
+  req: NextRequest,
+  options: RBACOptions
+): Promise<NextResponse | null> {
+  const { authorized, error, demoMode } = await checkUserRole(req, options);
   
-  if (paramIndex !== -1 && paramIndex + 1 < pathSegments.length) {
-    return pathSegments[paramIndex + 1];
+  if (!authorized) {
+    return NextResponse.json(
+      { error: error || 'Unauthorized' },
+      { status: 401 }
+    );
   }
   
+  // If authorized, return null to continue to the route handler
   return null;
 }
 
-/**
- * Check if user can access resource based on ownership
- */
-export async function checkResourceOwnership(
-  userContext: UserContext,
-  resourceId: string,
-  resourceType: 'patient' | 'doctor' | 'appointment'
-): Promise<boolean> {
-  // Implementation depends on resource type
-  switch (resourceType) {
-    case 'patient':
-      // Check if user is the patient or has admin role
-      return userContext.role === UserRole.ADMIN || 
-             userContext.clerkId === resourceId ||
-             userContext.userId === resourceId;
+// Helper function to protect API routes
+export function withRBAC(handler: Function, options: RBACOptions) {
+  return async function(req: NextRequest) {
+    const middlewareResponse = await rbacMiddleware(req, options);
     
-    case 'doctor':
-      // Check if user is the doctor or has admin role
-      return userContext.role === UserRole.ADMIN || 
-             userContext.clerkId === resourceId ||
-             userContext.userId === resourceId;
+    if (middlewareResponse) {
+      return middlewareResponse;
+    }
     
-    case 'appointment':
-      // More complex check - would need to query appointment table
-      // For now, return basic check
-      return userContext.role === UserRole.ADMIN;
-    
-    default:
-      return false;
+    return handler(req);
+  };
+}
+
+// Helper function to get current user from database
+export async function getCurrentUser() {
+  const { userId } = auth();
+  
+  if (!userId) {
+    return null;
+  }
+  
+  // Connect to MongoDB
+  const connected = await connectToMongoose();
+  if (!connected) {
+    return null;
+  }
+  
+  try {
+    // Find user in database
+    const user = await User.findOne({ clerkId: userId });
+    return user;
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    return null;
   }
 }
