@@ -35,6 +35,8 @@ import VonageVideoSession from '@/components/video/VonageVideoSession';
 import PreCallScreen from '@/components/consultation/PreCallScreen';
 import VideoControls from '@/components/consultation/VideoControls';
 import ChatFallback from '@/components/consultation/ChatFallback';
+import ConsultationChat from '@/components/realtime/ConsultationChat';
+import RealTimeNotifications from '@/components/realtime/RealTimeNotifications';
 
 interface ConsultationData {
   token: string;
@@ -636,6 +638,24 @@ export default function VideoConsultationPage() {
           console.log('Quality adjustment made:', adjustment);
         }}
       />
+
+      {/* Real-time Chat - Only show during active consultation */}
+      {consultationPhase === 'active' && consultationData && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <ConsultationChat
+            sessionId={sessionId}
+            className="shadow-lg"
+          />
+        </div>
+      )}
+
+      {/* Real-time Notifications */}
+      <div className="fixed top-4 right-4 z-50">
+        <RealTimeNotifications
+          showConnectionStatus={true}
+          maxNotifications={10}
+        />
+      </div>
 
       {/* Chat Fallback */}
       <ChatFallback
