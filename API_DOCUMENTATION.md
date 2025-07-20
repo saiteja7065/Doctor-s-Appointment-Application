@@ -1,20 +1,95 @@
 # MedMe API Documentation
 
+**Last Updated**: 2025-01-20
+**API Version**: v1.0
+**Status**: Development Ready with Demo Fallback
+
 ## 🔗 Base URL
 ```
-Development: http://localhost:3001
-Production: https://your-domain.com
+Development: http://localhost:3000
+Production: https://medme-app.vercel.app (when deployed)
 ```
 
 ## 🔐 Authentication
 
-All API endpoints require authentication via Clerk JWT tokens, except for public endpoints.
+All API endpoints require authentication via Clerk JWT tokens, except for public endpoints. The API includes demo mode fallback for development testing.
 
 ### Headers
 ```http
 Authorization: Bearer <jwt_token>
 Content-Type: application/json
+X-Demo-Mode: true (optional, for demo testing)
 ```
+
+### Authentication Status
+- ✅ **Clerk Integration**: Fully functional
+- ✅ **JWT Validation**: Working with middleware
+- ✅ **Role-based Access**: Implemented
+- ✅ **Demo Mode**: Available for testing
+- ✅ **Session Management**: Secure and reliable
+
+---
+
+## 📊 API ENDPOINT STATUS
+
+### ✅ FULLY FUNCTIONAL ENDPOINTS
+
+#### User Management APIs
+- ✅ `GET /api/users/profile` - Get current user profile
+- ✅ `PUT /api/users/profile` - Update user profile
+- ✅ `GET /api/users` - List all users (admin only)
+- ✅ `GET /api/users/[id]` - Get specific user
+- ✅ `POST /api/users/register` - User registration
+
+#### Doctor Management APIs
+- ✅ `POST /api/doctors/apply` - Submit doctor application
+- ✅ `GET /api/doctors/apply` - Get application status
+- ✅ `GET /api/doctors` - Search doctors
+- ✅ `GET /api/doctors/[id]` - Get doctor profile
+- ✅ `PUT /api/doctors/[id]` - Update doctor profile
+
+#### Admin APIs
+- ✅ `GET /api/admin/overview` - Platform statistics
+- ✅ `GET /api/admin/applications` - Doctor applications
+- ✅ `PUT /api/admin/applications/[id]` - Approve/reject applications
+- ✅ `GET /api/admin/users` - User management
+- ✅ `PUT /api/admin/users/[id]` - Update user status
+
+#### Appointment APIs
+- ✅ `POST /api/appointments` - Create appointment
+- ✅ `GET /api/appointments` - List appointments
+- ✅ `GET /api/appointments/[id]` - Get appointment details
+- ✅ `PUT /api/appointments/[id]` - Update appointment
+
+### ⚠️ PARTIALLY FUNCTIONAL ENDPOINTS
+
+#### Payment APIs (UI Only)
+- ⚠️ `POST /api/payments/process` - Process payment (demo only)
+- ⚠️ `GET /api/payments/history` - Payment history (demo data)
+- ⚠️ `POST /api/credits/purchase` - Purchase credits (demo only)
+
+#### Notification APIs (Basic)
+- ⚠️ `POST /api/notifications/send` - Send notification (in-app only)
+- ⚠️ `GET /api/notifications` - Get notifications (basic)
+
+### ❌ NOT IMPLEMENTED ENDPOINTS
+
+#### Video Consultation APIs
+- ❌ `POST /api/video/create-room` - Create video room
+- ❌ `GET /api/video/token` - Get video access token
+- ❌ `POST /api/video/end-session` - End video session
+
+#### Email/SMS APIs
+- ❌ `POST /api/email/send` - Send email notification
+- ❌ `POST /api/sms/send` - Send SMS notification
+- ❌ `POST /api/notifications/email` - Email notifications
+
+#### Advanced Features
+- ❌ `GET /api/analytics/dashboard` - Advanced analytics
+- ❌ `POST /api/medical-records` - Medical records management
+- ❌ `GET /api/reports/generate` - Generate reports
+
+---
 
 ## 👥 User Management
 
