@@ -59,7 +59,7 @@ const APPOINTMENT_STATUSES = [
   { value: 'no-show', label: 'No Show', color: 'orange' },
 ];
 
-const DEMO_APPOINTMENTS: Appointment[] = [
+/* const DEMO_APPOINTMENTS: Appointment[] = [
   {
     id: '1',
     patientId: 'patient_1',
@@ -127,7 +127,7 @@ const DEMO_APPOINTMENTS: Appointment[] = [
     createdAt: '2025-01-07T11:00:00Z',
     updatedAt: '2025-01-08T11:30:00Z'
   }
-];
+]; */
 
 export default function DoctorAppointmentsPage() {
   const { user } = useUser();
@@ -163,12 +163,14 @@ export default function DoctorAppointmentsPage() {
         const data = await response.json();
         setAppointments(data.appointments || []);
       } else {
-        // Demo mode - use demo data
-        setAppointments(DEMO_APPOINTMENTS);
+        // API error - show empty state
+        setAppointments([]);
+        setError('Failed to load appointments');
       }
     } catch (error) {
       console.error('Error fetching appointments:', error);
-      setAppointments(DEMO_APPOINTMENTS);
+      setAppointments([]);
+      setError('Failed to load appointments');
     } finally {
       setIsLoading(false);
     }
@@ -308,11 +310,8 @@ export default function DoctorAppointmentsPage() {
         ));
         toast.success('Appointment status updated');
       } else {
-        // Demo mode - update locally
-        setAppointments(prev => prev.map(apt => 
-          apt.id === appointmentId ? { ...apt, status: newStatus as any } : apt
-        ));
-        toast.success('Appointment status updated (demo mode)');
+        // API error - don't update locally
+        toast.error('Failed to update appointment status - API error');
       }
     } catch (error) {
       console.error('Error updating appointment status:', error);

@@ -53,8 +53,8 @@ export default function SignInPage() {
             }}
             routing="path"
             path="/sign-in"
-            fallbackRedirectUrl="http://localhost:3000/dashboard"
-            signUpUrl="http://localhost:3000/sign-up"
+            fallbackRedirectUrl={process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL || "/dashboard"}
+            signUpUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL || "/sign-up"}
           />
 
           {/* Fallback content if Clerk doesn't load */}

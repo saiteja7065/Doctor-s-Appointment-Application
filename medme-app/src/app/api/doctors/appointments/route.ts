@@ -4,8 +4,8 @@ import { Doctor } from '@/lib/models/Doctor';
 import Appointment, { AppointmentStatus } from '@/lib/models/Appointment';
 import { connectToMongoose } from '@/lib/mongodb';
 
-// Demo appointments data
-const DEMO_APPOINTMENTS = [
+// Removed demo appointments data - using real database operations only
+/* const DEMO_APPOINTMENTS = [
   {
     id: '1',
     patientId: 'patient_1',
@@ -90,7 +90,7 @@ const DEMO_APPOINTMENTS = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }
-];
+]; */
 
 /**
  * GET /api/doctors/appointments
@@ -101,14 +101,13 @@ async function handleGET(userContext: UserContext, request: NextRequest): Promis
     // Connect to database
     const isConnected = await connectToMongoose();
     if (!isConnected) {
-      // Return demo data when database is not available
-      console.log('Database not available, returning demo appointments for doctor:', userContext.clerkId);
       return NextResponse.json({
-        appointments: DEMO_APPOINTMENTS,
-        totalCount: DEMO_APPOINTMENTS.length,
-        hasMore: false,
-        message: 'Demo mode - database not available'
-      });
+        success: false,
+        error: 'Database connection failed',
+        appointments: [],
+        totalCount: 0,
+        hasMore: false
+      }, { status: 500 });
     }
 
     // Get doctor profile

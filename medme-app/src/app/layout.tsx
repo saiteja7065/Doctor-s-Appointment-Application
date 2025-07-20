@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   keywords: "doctor, appointment, telemedicine, healthcare, consultation",
   authors: [{ name: "MedMe Team" }],
   manifest: '/manifest.json',
-  metadataBase: new URL(process.env.NODE_ENV === 'production' ? 'https://medme.app' : 'http://localhost:3001'),
+  metadataBase: new URL(process.env.NODE_ENV === 'production' ? 'https://medme.app' : 'http://localhost:3000'),
   other: {
     // Optimize for performance
     'theme-color': '#0891b2',

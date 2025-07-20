@@ -93,53 +93,15 @@ export default function PaymentManagement({
         const errorData = await response.json();
         setError(errorData.error || 'Failed to load payment data');
         
-        // Use demo data if API fails
+        // No demo data fallback - show error state
         setPaymentData({
-          creditBalance: initialData?.creditBalance || 5,
-          subscriptionPlan: initialData?.subscriptionPlan || 'basic',
-          subscriptionStatus: 'active',
-          nextBillingDate: '2025-02-13',
-          totalSpent: 89.97,
-          recentTransactions: [
-            {
-              id: '1',
-              type: 'purchase',
-              description: 'Credit package - 10 credits',
-              credits: 10,
-              amount: '$19.99',
-              status: 'completed',
-              date: '2025-01-10'
-            },
-            {
-              id: '2',
-              type: 'usage',
-              description: 'Video consultation with Dr. Smith',
-              credits: -2,
-              amount: '$0.00',
-              status: 'completed',
-              date: '2025-01-08'
-            }
-          ],
-          paymentMethods: [
-            {
-              id: 'pm_1',
-              type: 'card',
-              brand: 'visa',
-              last4: '4242',
-              expiryMonth: 12,
-              expiryYear: 2025,
-              isDefault: true
-            }
-          ],
-          upcomingCharges: [
-            {
-              id: 'uc_1',
-              description: 'Basic Plan - Monthly',
-              amount: '$29.99',
-              date: '2025-02-13',
-              status: 'scheduled'
-            }
-          ]
+          creditBalance: 0,
+          subscriptionPlan: 'none',
+          subscriptionStatus: 'inactive',
+          totalSpent: 0,
+          recentTransactions: [],
+          paymentMethods: [],
+          upcomingCharges: []
         });
       }
     } catch (error) {

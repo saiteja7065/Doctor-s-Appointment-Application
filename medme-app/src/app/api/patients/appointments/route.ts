@@ -46,83 +46,19 @@ export async function GET(request: NextRequest) {
       // Connect to database
       const isConnected = await connectToMongoose();
       if (!isConnected) {
-        // Return demo appointments data
-        const demoAppointments: AppointmentResponse[] = [
-          {
-            id: 'demo_1',
-            doctorName: 'Dr. Sarah Johnson',
-            doctorSpecialty: 'General Practice',
-            appointmentDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            appointmentTime: '10:00',
-            duration: 30,
-            status: 'scheduled',
-            topic: 'Regular checkup and consultation',
-            description: 'Annual health checkup with blood work review',
-            consultationType: 'video',
-            consultationFee: 2,
-            meetingLink: '/consultation/demo_session_1',
-            sessionId: 'demo_session_1',
-            createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: 'demo_2',
-            doctorName: 'Dr. Michael Chen',
-            doctorSpecialty: 'Cardiology',
-            appointmentDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            appointmentTime: '14:30',
-            duration: 30,
-            status: 'completed',
-            topic: 'Heart health consultation',
-            description: 'Follow-up on recent ECG results',
-            consultationType: 'video',
-            consultationFee: 2,
-            meetingLink: '/consultation/demo_session_2',
-            sessionId: 'demo_session_2',
-            createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-            updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: 'demo_3',
-            doctorName: 'Dr. Emily Rodriguez',
-            doctorSpecialty: 'Dermatology',
-            appointmentDate: new Date().toISOString().split('T')[0],
-            appointmentTime: '15:00',
-            duration: 30,
-            status: 'scheduled',
-            topic: 'Skin condition follow-up',
-            description: 'Review treatment progress for eczema',
-            consultationType: 'video',
-            consultationFee: 2,
-            meetingLink: '/consultation/demo_session_3',
-            sessionId: 'demo_session_3',
-            createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-            updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-          }
-        ];
-
-        // Filter by status if provided
-        const filteredAppointments = status 
-          ? demoAppointments.filter(apt => {
-              if (status === 'upcoming') return apt.status === 'scheduled';
-              if (status === 'completed') return apt.status === 'completed';
-              if (status === 'cancelled') return apt.status === 'cancelled';
-              return true;
-            })
-          : demoAppointments;
-
         return NextResponse.json({
-          appointments: filteredAppointments,
+          success: false,
+          error: 'Database connection failed',
+          appointments: [],
           pagination: {
             page: 1,
             limit: 10,
-            total: filteredAppointments.length,
-            totalPages: 1,
+            total: 0,
+            totalPages: 0,
             hasNext: false,
             hasPrev: false
-          },
-          message: 'Demo appointments data'
-        });
+          }
+        }, { status: 500 });
       }
 
       // Find patient

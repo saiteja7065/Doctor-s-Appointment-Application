@@ -101,77 +101,19 @@ const demoApplications = [
 
 async function handler(userContext: any, request: NextRequest) {
   try {
-    // Connect to database
-    const isConnected = await connectToMongoose();
-    if (!isConnected) {
-      return NextResponse.json(
-        {
-          error: 'Database not available',
-          message: 'Cannot create demo data without database connection'
-        },
-        { status: 503 }
-      );
-    }
-
-    const createdApplications = [];
-
-    for (const app of demoApplications) {
-      // Check if user already exists
-      let user = await User.findOne({ clerkId: app.clerkId });
-      
-      if (!user) {
-        // Create user record
-        user = new User({
-          clerkId: app.clerkId,
-          email: app.email,
-          firstName: app.firstName,
-          lastName: app.lastName,
-          role: UserRole.DOCTOR,
-          status: UserStatus.PENDING_VERIFICATION
-        });
-        await user.save();
-      }
-
-      // Check if doctor application already exists
-      let doctor = await Doctor.findOne({ clerkId: app.clerkId });
-      
-      if (!doctor) {
-        // Create doctor application
-        doctor = new Doctor({
-          userId: user._id,
-          clerkId: app.clerkId,
-          verificationStatus: DoctorVerificationStatus.PENDING,
-          specialty: app.specialty,
-          licenseNumber: app.licenseNumber,
-          credentialUrl: app.credentialUrl,
-          yearsOfExperience: app.yearsOfExperience,
-          education: app.education,
-          certifications: app.certifications,
-          bio: app.bio,
-          languages: app.languages,
-          consultationFee: app.consultationFee,
-          timeZone: app.timeZone,
-          availability: []
-        });
-        await doctor.save();
-        
-        createdApplications.push({
-          id: doctor._id.toString(),
-          name: `${app.firstName} ${app.lastName}`,
-          email: app.email,
-          specialty: app.specialty
-        });
-      }
-    }
-
+    // Demo data creation is no longer supported
+    // Use real doctor applications through the proper workflow
     return NextResponse.json(
       {
-        message: 'Demo doctor applications created successfully',
-        created: createdApplications.length,
-        applications: createdApplications
+        success: false,
+        error: 'Demo data creation is no longer supported',
+        message: 'Please use the real doctor application workflow at /onboarding/doctor',
+        redirectTo: '/onboarding/doctor'
       },
-      { status: 201 }
+      { status: 410 } // Gone
     );
+
+
 
   } catch (error) {
     console.error('Error creating demo applications:', error);

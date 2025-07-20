@@ -25,9 +25,15 @@ const isAdminRoute = createRouteMatcher([
 ]);
 
 export default function middleware(req: NextRequest) {
-  // In demo mode, bypass Clerk middleware to avoid key validation errors
-  if (isDemoMode()) {
-    console.log('🧪 Demo mode: Bypassing Clerk middleware for', req.nextUrl.pathname);
+  // Check if we have valid Clerk keys before using Clerk middleware
+  const hasValidClerkKeys = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+                           process.env.CLERK_SECRET_KEY &&
+                           !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.includes('demo') &&
+                           !process.env.CLERK_SECRET_KEY.includes('demo');
+
+  // In demo mode or without valid keys, bypass Clerk middleware
+  if (isDemoMode() || !hasValidClerkKeys) {
+    console.log('🧪 Demo mode or invalid keys: Bypassing Clerk middleware for', req.nextUrl.pathname);
 
     // Apply security middleware first (unless path should be skipped)
     if (!shouldSkipSecurityCheck(req.nextUrl.pathname)) {

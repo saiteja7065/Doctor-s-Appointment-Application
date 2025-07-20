@@ -70,8 +70,14 @@ export async function GET(request: NextRequest) {
     // Verify admin role
     const isConnected = await connectToMongoose();
     if (!isConnected) {
-      // Return demo data for development
-      const demoData: AdminPaymentData = {
+      // No demo data - return error
+      return NextResponse.json({
+        success: false,
+        error: 'Database connection failed',
+        message: 'Unable to retrieve payment data'
+      }, { status: 500 });
+
+      /* const demoData: AdminPaymentData = {
         totalRevenue: 12450.00,
         monthlyRevenue: 3200.00,
         activeSubscriptions: 156,
@@ -141,13 +147,7 @@ export async function GET(request: NextRequest) {
             retryCount: 1
           }
         ]
-      };
-
-      return NextResponse.json({
-        success: true,
-        data: demoData,
-        message: 'Demo admin payment data'
-      });
+      }; */
     }
 
     // Check if user is admin
@@ -234,11 +234,9 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Get payment method stats (demo data for now)
+    // Get payment method stats (would need Stripe integration for real data)
     const paymentMethods: PaymentMethodStats[] = [
-      { type: 'Visa', count: Math.floor(totalTransactions * 0.57), percentage: 57 },
-      { type: 'Mastercard', count: Math.floor(totalTransactions * 0.29), percentage: 29 },
-      { type: 'American Express', count: Math.floor(totalTransactions * 0.14), percentage: 14 }
+      { type: 'Unknown', count: totalTransactions, percentage: 100 }
     ];
 
     // Get failed payments

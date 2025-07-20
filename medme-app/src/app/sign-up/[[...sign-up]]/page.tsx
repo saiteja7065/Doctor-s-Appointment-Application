@@ -53,8 +53,8 @@ export default function SignUpPage() {
             }}
             routing="path"
             path="/sign-up"
-            fallbackRedirectUrl="/onboarding"
-            signInUrl="/sign-in"
+            fallbackRedirectUrl={process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL || "/onboarding"}
+            signInUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL || "/sign-in"}
           />
 
           {/* Fallback content if Clerk doesn't load */}
