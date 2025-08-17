@@ -418,4 +418,3 @@ export async function checkDatabaseHealth(): Promise<{
 }
 
 // Export all functions directly to fix import issues
-export { connectToMongoose };
